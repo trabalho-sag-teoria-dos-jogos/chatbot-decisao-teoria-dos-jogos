@@ -14,8 +14,6 @@ from gamebot import payoff, scraping, solver
 from gamebot.llm import extract_strategies, generate_recommendation
 
 WELCOME_MESSAGE = """\
-## ♜ Consultor de Estratégia Competitiva — Teoria dos Jogos
-
 Este assistente ajuda a decidir **qual estratégia competitiva adotar** \
 frente a um concorrente específico, usando conceitos de Teoria dos Jogos \
 (estratégia dominante e equilíbrio de Nash).
