@@ -28,8 +28,7 @@ Para começar, me envie o **link do site de um concorrente** que você quer \
 analisar (ex.: um site de telemedicina, se seu mercado for saúde digital).
 
 ---
-*Projetado por Raiff Nóbrega e Cecília Paiva — Sistemas de Apoio à Gestão, \
-Sistemas de Informação.*
+*Projetado por Raiff Nóbrega e Maria Cecília Paiva.*
 """
 
 HEURISTIC_DISCLAIMER = (

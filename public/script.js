@@ -1,12 +1,14 @@
-// Injeta a peça de torre (♜) como ícone clicável no cabeçalho, que recarrega
-// a página (volta ao início da conversa). É um elemento real do DOM (não um
-// efeito de CSS) para poder receber o clique.
+// Injeta, dentro do grupo esquerdo do cabeçalho do Chainlit: a torre (♜)
+// clicável (recarrega e volta ao início) e o título compacto do site.
+// São elementos reais do DOM (não efeitos de CSS), necessários para o
+// clique e para o cabeçalho ter um propósito visível (nome do site).
 (function () {
-  function insertRookIcon() {
+  function insertHeaderBranding() {
     var header = document.getElementById("header");
     if (!header || header.querySelector(".sag-rook-icon")) {
       return;
     }
+
     var rook = document.createElement("button");
     rook.type = "button";
     rook.className = "sag-rook-icon";
@@ -17,39 +19,22 @@
       window.location.reload();
     });
 
+    var title = document.createElement("span");
+    title.className = "sag-header-title";
+    title.textContent = "Consultor de Estratégia Competitiva";
+
     // O cabeçalho do Chainlit tem dois grupos internos (esquerda/direita)
-    // distribuídos com "space-between". Inserir a torre como um terceiro
-    // item solto no topo do header quebra esse layout em 3 partes e joga o
-    // botão "nova conversa" para o meio. Por isso, colocamos a torre DENTRO
-    // do primeiro grupo (esquerda), junto com o botão de nova conversa, em
-    // vez de como irmã dos dois grupos.
+    // distribuídos com "space-between". Inserimos torre + título DENTRO do
+    // grupo da esquerda (não como irmãos soltos do header), para não
+    // quebrar esse layout em 3 partes e descentralizar o botão de nova
+    // conversa.
     var leftGroup = header.firstElementChild;
-    if (leftGroup) {
-      leftGroup.insertBefore(rook, leftGroup.firstChild);
-    } else {
-      header.insertBefore(rook, header.firstChild);
-    }
+    var target = leftGroup || header;
+    target.insertBefore(title, target.firstChild);
+    target.insertBefore(rook, title);
   }
 
-  // Cavalo grande, decorativo e persistente, perto do "horizonte" do
-  // tabuleiro de fundo — não depende da tela de carregamento do Chainlit
-  // (que é, por natureza, temporária e não pode ser mantida na tela).
-  function insertHorizonKnight() {
-    if (document.querySelector(".sag-horizon-knight")) {
-      return;
-    }
-    var knight = document.createElement("div");
-    knight.className = "sag-horizon-knight";
-    knight.setAttribute("aria-hidden", "true");
-    knight.textContent = "♞";
-    document.body.appendChild(knight);
-  }
-
-  var observer = new MutationObserver(function () {
-    insertRookIcon();
-    insertHorizonKnight();
-  });
+  var observer = new MutationObserver(insertHeaderBranding);
   observer.observe(document.body, { childList: true, subtree: true });
-  insertRookIcon();
-  insertHorizonKnight();
+  insertHeaderBranding();
 })();

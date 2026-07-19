@@ -48,7 +48,7 @@ name = "Consultor de Estratégia Competitiva"
 
 default_theme = "dark"
 
-# layout = "wide"
+layout = "wide"
 
 # Description of the assistant. This is used for HTML tags.
 description = "Consultor de estratégia competitiva baseado em Teoria dos Jogos"

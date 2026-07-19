@@ -77,14 +77,25 @@ body {
   background-color: hsl(var(--background));
 }
 
-/* Cabeçalho como barra de ferramentas sólida e bem definida, para que os
-   ícones (nova conversa, tema) não pareçam "flutuar" soltos sobre o
-   tabuleiro — o tabuleiro fica só no restante da página, atrás do header. */
+/* Cabeçalho compacto, sólido e com propósito claro (nome do site) — não é
+   mais uma barra vazia flutuando sobre o tabuleiro. */
 #header {
   background-color: hsl(var(--background));
   border-bottom: 1px solid hsl(var(--border));
   position: relative;
   z-index: 2;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.sag-header-title {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
 }
 
 /* Faixa de "horizonte" temática, acima de onde o tabuleiro converge —
@@ -113,7 +124,7 @@ body::before {
   content: "";
   position: fixed;
   bottom: 0;
-  top: 64px;
+  top: 48px;
   left: -40%;
   right: -40%;
   z-index: -2;
@@ -152,19 +163,16 @@ body::before {
   color: hsl(var(--primary) / 0.8);
 }
 
-/* Cavalo grande e persistente, decorativo, próximo do horizonte do
-   tabuleiro — diferente do logo de carregamento (que é, por natureza,
-   temporário), este elemento não desaparece. */
-.sag-horizon-knight {
-  position: fixed;
-  top: 4vh;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: clamp(3rem, 9vw, 6.5rem);
-  line-height: 1;
-  color: hsl(var(--board-tint) / 0.4);
-  text-shadow: 0 0 28px hsl(var(--board-tint) / 0.35);
-  z-index: -1;
-  pointer-events: none;
-  user-select: none;
+/* Transição suave na troca de tema claro/escuro — toque de acabamento
+   profissional em qualquer elemento que usa as cores do tema. */
+body, #header, .sag-rook-icon {
+  transition: background-color 0.25s ease, color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+/* Layout largo (config.toml: layout = "wide") ganha mais espaço; removemos
+   o teto de largura do texto para aproveitar o espaço lateral em vez de
+   deixar o conteúdo preso numa coluna estreita e centralizada. */
+.markdown {
+  max-width: 100% !important;
 }
