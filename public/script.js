@@ -34,20 +34,22 @@
     target.insertBefore(rook, title);
   }
 
-  // Cavalo grande e persistente, decorativo, perto do horizonte do
-  // tabuleiro. Fica em posição fixa em PIXELS (não em vh) a uma distância
-  // segura abaixo do cabeçalho, para nunca ficar cortado por ele mesmo em
-  // telas baixas. Nunca desaparece (diferente do logo de carregamento,
-  // que é temporário por natureza do Chainlit).
+  // Cavalo decorativo e persistente. É inserido DENTRO do #header (não
+  // mais em document.body) e posicionado via CSS "position: absolute"
+  // relativo ao próprio cabeçalho — assim ele fica numa faixa reservada,
+  // sempre abaixo dos ícones e sempre acima de qualquer texto de
+  // mensagem, sem nunca se sobrepor ao conteúdo (área fisicamente
+  // separada, não uma questão de camada/z-index).
   function insertHorizonKnight() {
-    if (document.querySelector(".sag-horizon-knight")) {
+    var header = document.getElementById("header");
+    if (!header || header.querySelector(".sag-horizon-knight")) {
       return;
     }
     var knight = document.createElement("div");
     knight.className = "sag-horizon-knight";
     knight.setAttribute("aria-hidden", "true");
     knight.textContent = "♞";
-    document.body.appendChild(knight);
+    header.appendChild(knight);
   }
 
   var observer = new MutationObserver(function () {
