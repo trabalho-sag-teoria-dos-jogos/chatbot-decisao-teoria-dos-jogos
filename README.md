@@ -97,8 +97,10 @@ A aplicação sobe em `http://localhost:8000`.
 2. **Confira as estratégias identificadas.** O sistema extrai, via LLM,
    entre 2 e 4 estratégias prováveis do concorrente, cada uma com um
    trecho do texto original como evidência.
-3. **Informe suas próprias estratégias.** Digite pelo menos 2 estratégias
-   possíveis para o seu negócio, separadas por vírgula ou uma por linha.
+3. **Informe suas próprias estratégias.** Descreva, em texto livre,
+   pelo menos 2 estratégias possíveis para o seu negócio — o sistema usa
+   o LLM para identificar cada estratégia mencionada, mesmo que você
+   escreva tudo em uma frase só.
 4. **Escolha como definir os payoffs da matriz:**
    - **Heurística automática**: o sistema estima os payoffs (escala 1 a 3)
      a partir da categoria de cada estratégia — é uma estimativa, não um

@@ -77,6 +77,39 @@ def _chat_json(system_prompt: str, user_prompt: str) -> dict:
     ) from last_error
 
 
+USER_STRATEGIES_SYSTEM_PROMPT = """\
+Você é um assistente que organiza uma lista de estratégias competitivas
+que um usuário descreveu em linguagem natural, em texto corrido.
+
+Regras estritas:
+- Identifique cada estratégia distinta mencionada pelo usuário, mesmo que
+  ele tenha escrito tudo numa frase só, com vírgulas internas ou
+  conectivos ("e", "além disso", "também").
+- NÃO invente estratégias que o usuário não mencionou.
+- NÃO inclua frases de preenchimento, exemplos ilustrativos ou conectivos
+  como itens da lista (ex.: "por exemplo", "ou seja", "entre outros").
+  Esses termos NUNCA devem virar um item da lista sozinhos.
+- Reescreva cada estratégia de forma curta e clara (poucas palavras),
+  preservando o sentido original do usuário.
+- Se o usuário claramente listou os itens um por linha, apenas limpe e
+  devolva a mesma lista.
+- Responda em português do Brasil.
+- Responda EXCLUSIVAMENTE em JSON válido, no formato:
+  {"strategies": ["estratégia 1", "estratégia 2"]}
+"""
+
+
+def parse_user_strategies(raw_text: str) -> list[str]:
+    """Interpreta o texto livre do usuário e extrai a lista de estratégias
+    próprias (RF04), em vez de dividir ingenuamente por vírgula/linha —
+    frases naturais com vírgulas internas quebravam nessa abordagem
+    anterior, produzindo fragmentos sem sentido (ex.: "por exemplo")
+    tratados como estratégia própria."""
+    data = _chat_json(USER_STRATEGIES_SYSTEM_PROMPT, raw_text)
+    raw_strategies = data.get("strategies", [])
+    return [str(item).strip() for item in raw_strategies if str(item).strip()]
+
+
 def extract_strategies(company_label: str, text: str) -> list[StrategyCandidate]:
     """Extrai estratégias competitivas prováveis a partir do texto coletado (RF03)."""
     user_prompt = (

@@ -154,6 +154,17 @@ body, #header, .sag-rook-icon {
     border-color 0.25s ease;
 }
 
+/* Botão de enviar mensagem: cor da marca (verde), não o rosa padrão do
+   Chainlit. Alvo pelo ID real do elemento ("chat-submit", confirmado no
+   bundle do Chainlit instalado) em vez de classes do Tailwind, que usam
+   a cor rosa original fixa em vez da variável --primary sobrescrita. */
+#chat-submit {
+  background-color: hsl(var(--board-tint)) !important;
+}
+#chat-submit:hover {
+  background-color: hsl(var(--board-tint) / 0.85) !important;
+}
+
 /* Layout largo (config.toml: layout = "wide") ganha mais espaço; removemos
    o teto de largura do texto para aproveitar o espaço lateral em vez de
    deixar o conteúdo preso numa coluna estreita e centralizada. */

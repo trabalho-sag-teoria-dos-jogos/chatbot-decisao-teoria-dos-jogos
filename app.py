@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 import chainlit as cl
 
 from gamebot import payoff, scraping, solver
-from gamebot.llm import extract_strategies, generate_recommendation
+from gamebot.llm import extract_strategies, generate_recommendation, parse_user_strategies
 
 WELCOME_MESSAGE = """\
 Este assistente ajuda a decidir **qual estratégia competitiva adotar** \
@@ -98,9 +98,10 @@ async def _extract_and_show(company_label: str, text: str, source: str) -> None:
     await cl.Message(
         content=(
             "Agora me diga: quais são **as suas próprias estratégias "
-            "possíveis** diante desse concorrente? Informe **pelo menos "
-            "2**, separadas por vírgula ou uma por linha "
-            "(ex.: `preço baixo, diferenciação por atendimento`)."
+            "possíveis** diante desse concorrente? Pode escrever à "
+            "vontade, em texto corrido — preciso de **pelo menos 2** "
+            "estratégias (ex.: \"vou apostar em preço baixo e também em "
+            "um atendimento mais rápido que o da concorrência\")."
         )
     ).send()
 
@@ -208,9 +209,11 @@ async def _show_matrix(game: payoff.Game) -> None:
     cl.user_session.set("stage", STAGE_DONE)
 
 
-def _parse_strategy_list(raw: str) -> list[str]:
-    parts = [p.strip() for chunk in raw.split("\n") for p in chunk.split(",")]
-    return [p for p in parts if p]
+def _parse_strategy_list_fallback(raw: str) -> list[str]:
+    """Separação ingênua (uma por linha), usada apenas se a chamada ao LLM
+    falhar — ver `parse_user_strategies` para o caminho normal."""
+    lines = [line.strip() for line in raw.split("\n")]
+    return [line for line in lines if line]
 
 
 @cl.on_message
@@ -224,13 +227,21 @@ async def on_message(message: cl.Message) -> None:
         return
 
     if stage == STAGE_AWAITING_USER_STRATEGIES:
-        strategies = _parse_strategy_list(content)
+        async with cl.Step(name="Interpretação das suas estratégias (Groq / Llama 3)") as step:
+            step.input = content
+            try:
+                strategies = parse_user_strategies(content)
+            except Exception as exc:  # noqa: BLE001
+                step.output = f"Falha, usando separação simples: {exc}"
+                strategies = _parse_strategy_list_fallback(content)
+            else:
+                step.output = f"{len(strategies)} estratégia(s) identificada(s)."
+
         if len(strategies) < 2:
             await cl.Message(
                 content=(
                     "Preciso de pelo menos 2 estratégias suas para montar o "
-                    "jogo. Pode reenviar, separando por vírgula ou uma por "
-                    "linha?"
+                    "jogo. Pode descrever com um pouco mais de detalhe?"
                 )
             ).send()
             return
