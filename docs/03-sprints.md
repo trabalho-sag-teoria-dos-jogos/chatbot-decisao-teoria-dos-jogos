@@ -11,6 +11,14 @@ fluxo ponta-a-ponta funcionando, mesmo que simplificado, desde o Sprint 2).
 - Criar repositório e estrutura de pastas.
 - Escrever os documentos de planejamento e requisitos (este material).
 
+**Stack definida:** aplicação Python monolítica com **Chainlit** como
+interface de chat, Groq API (Llama 3) para extração/recomendação, solver de
+teoria dos jogos implementado pela dupla (ver seção 5 de
+`01-planejamento-implementacao.md`), SQLite opcional para histórico, e
+deploy no **Render** (originalmente planejado para Hugging Face Spaces;
+trocado após o SDK Docker do Hugging Face deixar de ter tier gratuito
+para contas novas — ver `docs/DEPLOY.md`).
+
 **Entrega:** repositório inicializado + docs de planejamento/requisitos.
 
 ---
@@ -66,10 +74,14 @@ clássicos com resultado conhecido.
 ## Sprint 4 — Recomendação e integração ponta-a-ponta
 **Objetivo:** fechar o fluxo completo com explicação em linguagem natural.
 - RF09 — geração da recomendação textual final via LLM, a partir do
-  resultado do solver.
+  resultado do solver, nomeando explicitamente o conceito de teoria dos
+  jogos usado (ex.: estratégia dominante, equilíbrio de Nash) e explicando
+  o que ele significa.
 - RNF02 — reforço de transparência sobre heurística vs. dado real na
   recomendação.
 - RNF06 — revisão de linguagem para usuário leigo em teoria dos jogos.
+- RNF08 — reforço de transparência sobre o escopo da análise ser estratégico/
+  competitivo, não uma avaliação de viabilidade geral do negócio.
 - Integração de todo o pipeline: link → estratégias → matriz → solver →
   recomendação, tudo dentro da interface de chat.
 
@@ -87,9 +99,11 @@ código, ir do link do concorrente até a recomendação final.
 - RF13 — histórico simples de análises (se houver tempo).
 - Testes end-to-end com o caso real de saúde digital da empreendedora.
 - Ajustes de UI/UX do chat.
+- Deploy da aplicação Chainlit no Render (URL pública para a
+  apresentação).
 - Preparação de roteiro de demonstração/apresentação para a disciplina.
 
-**Entrega:** versão final estável + roteiro de demo.
+**Entrega:** versão final estável, publicada no Render, + roteiro de demo.
 
 ---
 

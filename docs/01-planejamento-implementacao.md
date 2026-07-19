@@ -12,6 +12,14 @@ como estratégia dominante e equilíbrio de Nash.
 Caso de uso motivador: entrada em um mercado de **saúde digital**, avaliando
 concorrentes já estabelecidos (ex.: telemedicina, prontuário eletrônico).
 
+**Delimitação importante:** o sistema é um **consultor de estratégia
+competitiva**, não um avaliador de viabilidade de negócio. Ele assume que o
+usuário já decidiu entrar no mercado e responde apenas "dado que vou
+competir com estes concorrentes, qual estratégia devo adotar frente às
+reações prováveis deles?". O sistema **não** avalia viabilidade financeira,
+operacional ou de mercado do negócio como um todo — ver RNF08 em
+`02-requisitos.md`.
+
 ## 2. Problema e Justificativa
 
 Decisões de entrada/competição em mercado são frequentemente tomadas de
@@ -72,16 +80,26 @@ Usuário informa:
 
 ## 5. Arquitetura Técnica
 
-| Camada | Tecnologia sugerida | Responsabilidade |
+**Decisão de stack (definida em conjunto com a dupla):** aplicação **Python
+monolítica** — sem backend/API separado — construída sobre **Chainlit**, que
+já entrega a interface de chat web (site com URL pública) e suporta exibir
+o raciocínio em etapas (scraping → extração → matriz → solver →
+recomendação) e tabelas/elementos ricos (matriz de payoff) direto na
+conversa. Essa escolha evita a complexidade de manter frontend e backend
+separados (CORS, API REST, dois deploys), que não agrega valor aos
+requisitos funcionais da disciplina.
+
+| Camada | Tecnologia definida | Responsabilidade |
 |---|---|---|
-| Interface | Chat web simples (Streamlit ou frontend leve) | Conversa com o usuário, coleta de links e payoffs |
-| Backend/API | Python (FastAPI) | Orquestra o fluxo, expõe endpoints |
+| Interface + orquestração | **Chainlit** (Python) | Chat web, coleta de links/payoffs, exibição da matriz e do raciocínio em etapas, tudo no mesmo processo (sem API separada) |
 | Coleta de dados | `requests` + `BeautifulSoup` | Baixa e limpa o HTML das páginas dos concorrentes |
-| Extração de estratégias | LLM (API Claude) | Interpreta o texto extraído e sugere estratégias prováveis |
+| Extração de estratégias | LLM (**Groq API, `llama-3.3-70b-versatile`**, fallback `llama-3.1-8b-instant`) | Interpreta o texto extraído e sugere estratégias prováveis |
 | Heurística de payoff | Módulo Python próprio | Converte sinais textuais em valores ordinais |
-| Solver de jogos | Módulo Python próprio (ou `nashpy`) | Calcula estratégia dominante / equilíbrio de Nash |
-| Explicação | LLM (API Claude) | Gera a recomendação final em linguagem natural |
-| Persistência | SQLite (opcional) | Histórico de análises do usuário |
+| Solver de jogos | Módulo Python próprio (estratégia dominante + Nash puro), implementado pela dupla — **cálculo 100% determinístico, nunca delegado ao LLM** | Calcula estratégia dominante / equilíbrio de Nash |
+| Validação do solver | `nashpy` (uso restrito a testes) | Confere, em testes automatizados, se o solver próprio bate com uma biblioteca de referência — não roda em produção |
+| Explicação | LLM (**Groq API, `llama-3.3-70b-versatile`**) | Gera a recomendação final em linguagem natural a partir do resultado já calculado pelo solver, nomeando o conceito de teoria dos jogos usado (RF09) |
+| Persistência | SQLite (opcional, RF13) | Histórico de análises do usuário |
+| Deploy | **Render** (Web Service via Docker) | Hospedagem gratuita do site, com URL pública para demo/apresentação — substituiu o Hugging Face Spaces, cujo SDK Docker deixou de ter tier gratuito para contas novas |
 
 ## 6. Riscos e Mitigações
 
