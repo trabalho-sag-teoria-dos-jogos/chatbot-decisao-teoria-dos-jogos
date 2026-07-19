@@ -77,26 +77,18 @@ body {
   background-color: hsl(var(--background));
 }
 
-/* Cabeçalho com propósito claro (nome do site) e uma faixa própria,
-   reservada, para o cavalo decorativo — ele fica DENTRO do cabeçalho
-   (abaixo dos ícones, acima do texto), nunca sobre o conteúdo das
-   mensagens. O Chainlit calcula onde a área de mensagens começa a partir
-   da altura real deste elemento, então aumentar a altura aqui empurra o
-   texto para baixo automaticamente — não é preciso mexer na área de
-   mensagens em si. */
+/* Cabeçalho compacto — só os ícones e o nome do site. O cavalo NÃO fica
+   aqui dentro: tem uma faixa própria e separada (.sag-knight-band, logo
+   abaixo), nem faz parte da barra superior nem do espaço do texto. */
 #header {
   background-color: hsl(var(--background));
   border-bottom: 1px solid hsl(var(--border));
   position: relative;
   z-index: 2;
-  min-height: 110px !important;
-  height: 110px !important;
-  /* Mantém a orientação em linha (não mexe em flex-direction) para não
-     quebrar o layout original dos dois grupos de ícones (esquerda/
-     direita) já corrigido antes — só ancora essa linha de ícones no
-     topo da caixa mais alta, sobrando espaço embaixo para o cavalo. */
-  align-items: flex-start !important;
-  padding: 12px 0 0 0 !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 .sag-header-title {
@@ -133,7 +125,7 @@ body::before {
   content: "";
   position: fixed;
   bottom: 0;
-  top: 110px;
+  top: 112px;
   left: -40%;
   right: -40%;
   z-index: -2;
@@ -186,18 +178,27 @@ body, #header, .sag-rook-icon {
   max-width: 100% !important;
 }
 
-/* Cavalo decorativo, agora posicionado DENTRO do cabeçalho (não mais
-   fixo à janela inteira) — fica ancorado na base da barra superior,
-   abaixo da linha de ícones e acima de qualquer texto de mensagem, que
-   só começa depois do cabeçalho inteiro. Não há mais disputa de camada
-   (z-index) com o texto: são áreas fisicamente separadas, então a
-   sobreposição é estruturalmente impossível. */
+/* Faixa própria e exclusiva do cavalo — um elemento de verdade, inserido
+   no fluxo normal do documento ENTRE o #header e a área de mensagens
+   (script.js usa header.insertAdjacentElement("afterend", ...)). Por ser
+   um bloco real ocupando espaço (não posicionado em cima de nada via
+   position:fixed/absolute), o texto das mensagens é empurrado para
+   depois dela automaticamente — não existe sobreposição possível, nem
+   com o cabeçalho, nem com o texto, porque as três áreas nunca dividem
+   o mesmo espaço. */
+.sag-knight-band {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+  position: relative;
+  z-index: 2;
+}
+
 .sag-horizon-knight {
-  position: absolute;
-  bottom: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 2.4rem;
+  font-size: 2.2rem;
   line-height: 1;
   color: hsl(var(--board-tint) / 1);
   filter: drop-shadow(0 1px 4px rgb(0 0 0 / 0.35));

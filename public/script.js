@@ -34,29 +34,33 @@
     target.insertBefore(rook, title);
   }
 
-  // Cavalo decorativo e persistente. É inserido DENTRO do #header (não
-  // mais em document.body) e posicionado via CSS "position: absolute"
-  // relativo ao próprio cabeçalho — assim ele fica numa faixa reservada,
-  // sempre abaixo dos ícones e sempre acima de qualquer texto de
-  // mensagem, sem nunca se sobrepor ao conteúdo (área fisicamente
-  // separada, não uma questão de camada/z-index).
-  function insertHorizonKnight() {
+  // Cria uma faixa PRÓPRIA para o cavalo, como elemento IRMÃO do
+  // #header (não filho dele, não filho da área de mensagens) — inserida
+  // logo depois do cabeçalho no DOM. Por ocupar espaço real no fluxo
+  // normal do documento, o restante do conteúdo (a área de mensagens) é
+  // empurrado para baixo dela automaticamente. Resultado: três áreas
+  // sequenciais e exclusivas — cabeçalho, faixa do cavalo, texto — sem
+  // nenhuma se sobrepor às outras.
+  function insertKnightBand() {
     var header = document.getElementById("header");
-    if (!header || header.querySelector(".sag-horizon-knight")) {
+    if (!header || document.querySelector(".sag-knight-band")) {
       return;
     }
-    var knight = document.createElement("div");
+    var band = document.createElement("div");
+    band.className = "sag-knight-band";
+    var knight = document.createElement("span");
     knight.className = "sag-horizon-knight";
     knight.setAttribute("aria-hidden", "true");
     knight.textContent = "♞";
-    header.appendChild(knight);
+    band.appendChild(knight);
+    header.insertAdjacentElement("afterend", band);
   }
 
   var observer = new MutationObserver(function () {
     insertHeaderBranding();
-    insertHorizonKnight();
+    insertKnightBand();
   });
   observer.observe(document.body, { childList: true, subtree: true });
   insertHeaderBranding();
-  insertHorizonKnight();
+  insertKnightBand();
 })();
