@@ -99,25 +99,6 @@ body {
   white-space: nowrap;
 }
 
-/* Faixa de "horizonte" temática, acima de onde o tabuleiro converge —
-   um brilho sutil na cor de destaque (verde-esmeralda), sobre o fundo
-   grafite/azul-marinho, bem próximo do topo da página. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -3;
-  pointer-events: none;
-  background:
-    linear-gradient(
-      to bottom,
-      hsl(var(--background)) 0%,
-      hsl(var(--board-tint) / 0.28) 11%,
-      hsl(var(--background)) 24%,
-      hsl(var(--background)) 100%
-    );
-}
-
 /* Tabuleiro de fundo com efeito 3D: ancorado como um "chão" perto do
    campo de digitação (base grande, nítida) e recuando em perspectiva até
    um horizonte próximo do topo da página, onde desaparece em degradê. */
@@ -125,7 +106,7 @@ body::before {
   content: "";
   position: fixed;
   bottom: 0;
-  top: 112px;
+  top: 144px;
   left: -40%;
   right: -40%;
   z-index: -2;
@@ -187,12 +168,19 @@ body, #header, .sag-rook-icon {
    com o cabeçalho, nem com o texto, porque as três áreas nunca dividem
    o mesmo espaço. */
 .sag-knight-band {
-  height: 64px;
+  height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: hsl(var(--background));
-  border-bottom: 1px solid hsl(var(--border) / 0.6);
+  /* "Céu" temático: verde-esmeralda no topo (emenda direto com o
+     cabeçalho, sem linha divisória) escurecendo em degradê até a cor do
+     tabuleiro logo abaixo — não é uma cor sólida com borda. */
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--board-tint) / 0.55) 0%,
+    hsl(var(--board-tint) / 0.22) 55%,
+    hsl(var(--background)) 100%
+  );
   position: relative;
   z-index: 2;
 }
