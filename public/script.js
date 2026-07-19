@@ -34,7 +34,27 @@
     target.insertBefore(rook, title);
   }
 
-  var observer = new MutationObserver(insertHeaderBranding);
+  // Cavalo grande e persistente, decorativo, perto do horizonte do
+  // tabuleiro. Fica em posição fixa em PIXELS (não em vh) a uma distância
+  // segura abaixo do cabeçalho, para nunca ficar cortado por ele mesmo em
+  // telas baixas. Nunca desaparece (diferente do logo de carregamento,
+  // que é temporário por natureza do Chainlit).
+  function insertHorizonKnight() {
+    if (document.querySelector(".sag-horizon-knight")) {
+      return;
+    }
+    var knight = document.createElement("div");
+    knight.className = "sag-horizon-knight";
+    knight.setAttribute("aria-hidden", "true");
+    knight.textContent = "♞";
+    document.body.appendChild(knight);
+  }
+
+  var observer = new MutationObserver(function () {
+    insertHeaderBranding();
+    insertHorizonKnight();
+  });
   observer.observe(document.body, { childList: true, subtree: true });
   insertHeaderBranding();
+  insertHorizonKnight();
 })();

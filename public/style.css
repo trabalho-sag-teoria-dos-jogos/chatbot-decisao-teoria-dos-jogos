@@ -176,3 +176,21 @@ body, #header, .sag-rook-icon {
 .markdown {
   max-width: 100% !important;
 }
+
+/* Cavalo grande e persistente, decorativo, próximo do horizonte do
+   tabuleiro. "top" é um valor FIXO em pixels (não vh), sempre maior que a
+   altura do cabeçalho (48px), para garantir que ele nunca fique cortado
+   por trás da barra superior, em nenhum tamanho de tela. */
+.sag-horizon-knight {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  line-height: 1;
+  color: hsl(var(--board-tint) / 0.45);
+  text-shadow: 0 0 28px hsl(var(--board-tint) / 0.35);
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
