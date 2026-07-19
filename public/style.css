@@ -1,0 +1,58 @@
+/* Identidade visual "tabuleiro estratégico corporativo" — SAG / Teoria dos Jogos. */
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 160 84% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 30% 92%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 25% 92%;
+  --muted-foreground: 215 16% 40%;
+  --accent: 160 60% 90%;
+  --accent-foreground: 160 84% 22%;
+  --border: 214 20% 85%;
+  --input: 214 20% 85%;
+  --ring: 160 84% 32%;
+}
+
+.dark {
+  --background: 222 47% 9%;
+  --foreground: 210 40% 96%;
+  --card: 222 39% 14%;
+  --card-foreground: 210 40% 96%;
+  --popover: 222 39% 14%;
+  --popover-foreground: 210 40% 96%;
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 222 30% 18%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 222 24% 20%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 160 50% 20%;
+  --accent-foreground: 160 84% 85%;
+  --border: 222 25% 20%;
+  --input: 222 25% 20%;
+  --ring: 160 84% 39%;
+  --sidebar-background: 222 55% 7%;
+  --sidebar-primary: 160 84% 39%;
+  --sidebar-ring: 160 84% 39%;
+}
+
+/* Título com serifa (tom formal de consultoria); corpo permanece sans-serif. */
+h1, h2, h3 {
+  font-family: "Georgia", "Times New Roman", serif !important;
+  letter-spacing: 0.01em;
+}
+
+/* Grid sutil de tabuleiro no cabeçalho, ecoando a matriz de payoff. */
+#header {
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.35) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
