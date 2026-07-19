@@ -106,7 +106,7 @@ body::before {
   content: "";
   position: fixed;
   bottom: 0;
-  top: 156px;
+  top: 148px;
   left: -40%;
   right: -40%;
   z-index: -2;
@@ -160,18 +160,20 @@ body, #header, .sag-rook-icon {
 .markdown {
   max-width: 100% !important;
   /* Espaçamento mais compacto, para o texto de boas-vindas caber inteiro
-     na primeira tela sem precisar de rolagem. */
-  line-height: 1.45 !important;
+     numa tela cheia normal sem precisar de rolagem — rolagem só deve
+     aparecer se a janela for encolhida abaixo disso, o que é
+     comportamento responsivo esperado, não um problema a corrigir. */
+  line-height: 1.35 !important;
 }
 .markdown p {
-  margin: 0.5em 0 !important;
+  margin: 0.35em 0 !important;
 }
 .markdown blockquote {
-  margin: 0.5em 0 !important;
-  padding: 0.3em 0.9em !important;
+  margin: 0.35em 0 !important;
+  padding: 0.2em 0.8em !important;
 }
 .markdown hr {
-  margin: 0.6em 0 !important;
+  margin: 0.4em 0 !important;
 }
 
 /* Faixa própria e exclusiva do cavalo — um elemento de verdade, inserido
@@ -183,7 +185,7 @@ body, #header, .sag-rook-icon {
    com o cabeçalho, nem com o texto, porque as três áreas nunca dividem
    o mesmo espaço. */
 .sag-knight-band {
-  height: 108px;
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
