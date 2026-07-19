@@ -1,0 +1,7 @@
+chainlit==2.0.1
+groq==1.5.0
+requests==2.32.3
+beautifulsoup4==4.12.3
+python-dotenv==1.0.1
+nashpy==0.0.41
+pytest==8.3.3

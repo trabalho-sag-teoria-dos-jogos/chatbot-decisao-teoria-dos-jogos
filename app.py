@@ -1,0 +1,301 @@
+"""Ponto de entrada do chatbot (Chainlit). Executar com: chainlit run app.py"""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+import chainlit as cl
+
+from gamebot import payoff, scraping, solver
+from gamebot.llm import extract_strategies, generate_recommendation
+
+WELCOME_MESSAGE = """\
+## Consultor de Estratégia Competitiva — Teoria dos Jogos
+
+Este assistente ajuda a decidir **qual estratégia competitiva adotar** \
+frente a um concorrente específico, usando conceitos de Teoria dos Jogos \
+(estratégia dominante e equilíbrio de Nash).
+
+> **Escopo:** a análise cobre apenas o aspecto estratégico/competitivo. \
+Ela **não** avalia viabilidade financeira, operacional ou de mercado do \
+negócio como um todo.
+
+Para começar, me envie o **link do site de um concorrente** que você quer \
+analisar (ex.: um site de telemedicina, se seu mercado for saúde digital).
+"""
+
+HEURISTIC_DISCLAIMER = (
+    "\n\n> ⚠️ Os payoffs heurísticos são **estimativas ordinais** (escala 1 a "
+    "3) calculadas a partir da categoria textual de cada estratégia — "
+    "**não são dados reais de mercado**. Critério: estratégias na mesma "
+    "categoria competem diretamente pelo mesmo público (payoff 1); em "
+    "categorias diferentes, a sobreposição é menor (payoff 3); quando uma "
+    "estratégia não se encaixa claramente numa categoria, o resultado é "
+    "tratado como incerto (payoff 2)."
+)
+
+STAGE_AWAITING_LINK = "awaiting_link"
+STAGE_AWAITING_MANUAL_TEXT = "awaiting_manual_text"
+STAGE_AWAITING_USER_STRATEGIES = "awaiting_user_strategies"
+STAGE_AWAITING_MANUAL_CELL = "awaiting_manual_cell"
+STAGE_DONE = "done"
+
+MANUAL_CELL_PATTERN = re.compile(r"^\s*(-?\d+(?:[.,]\d+)?)\s*,\s*(-?\d+(?:[.,]\d+)?)\s*$")
+
+
+@cl.on_chat_start
+async def on_chat_start() -> None:
+    cl.user_session.set("stage", STAGE_AWAITING_LINK)
+    cl.user_session.set("competitors", [])
+    await cl.Message(content=WELCOME_MESSAGE).send()
+
+
+async def _extract_and_show(company_label: str, text: str, source: str) -> None:
+    async with cl.Step(name="Extração de estratégias (Groq / Llama 3)") as step:
+        step.input = text[:500]
+        try:
+            strategies = extract_strategies(company_label, text)
+        except Exception as exc:  # noqa: BLE001
+            step.output = f"Falha na extração: {exc}"
+            await cl.Message(
+                content=(
+                    "Não consegui interpretar o texto com o modelo de linguagem "
+                    f"agora ({exc}). Podemos tentar novamente enviando o link "
+                    "de outro concorrente."
+                )
+            ).send()
+            cl.user_session.set("stage", STAGE_AWAITING_LINK)
+            return
+        step.output = f"{len(strategies)} estratégia(s) identificada(s)."
+
+    if not strategies:
+        await cl.Message(
+            content=(
+                "Não identifiquei estratégias claras nesse texto. Pode enviar "
+                "outro link de concorrente, ou colar manualmente um trecho de "
+                "texto relevante do site dele."
+            )
+        ).send()
+        cl.user_session.set("stage", STAGE_AWAITING_LINK)
+        return
+
+    lines = [f"### Estratégias identificadas — {company_label} ({source})\n"]
+    for item in strategies:
+        lines.append(f"- **{item.strategy}**\n  > _{item.evidence}_")
+    await cl.Message(content="\n".join(lines)).send()
+
+    cl.user_session.set("competitor_label", company_label)
+    cl.user_session.set(
+        "competitor_strategies", [s.strategy for s in strategies]
+    )
+    cl.user_session.set("stage", STAGE_AWAITING_USER_STRATEGIES)
+
+    await cl.Message(
+        content=(
+            "Agora me diga: quais são **as suas próprias estratégias "
+            "possíveis** diante desse concorrente? Informe **pelo menos "
+            "2**, separadas por vírgula ou uma por linha "
+            "(ex.: `preço baixo, diferenciação por atendimento`)."
+        )
+    ).send()
+
+
+async def _ask_payoff_mode() -> None:
+    res = await cl.AskActionMessage(
+        content=(
+            "Como você quer definir os payoffs da matriz? Payoffs são o "
+            "'ganho' relativo de cada combinação de estratégias — não um "
+            "número real de lucro, a menos que você tenha esse dado."
+        ),
+        actions=[
+            cl.Action(
+                name="heuristico",
+                payload={"mode": payoff.MODE_HEURISTIC},
+                label="Heurística automática (estimativa 1–3)",
+            ),
+            cl.Action(
+                name="manual",
+                payload={"mode": payoff.MODE_MANUAL},
+                label="Inserir valores reais manualmente",
+            ),
+        ],
+    ).send()
+
+    mode = (res or {}).get("payload", {}).get("mode", payoff.MODE_HEURISTIC)
+    competitor_label = cl.user_session.get("competitor_label")
+    competitor_strategies = cl.user_session.get("competitor_strategies")
+    user_strategies = cl.user_session.get("user_strategies")
+
+    if mode == payoff.MODE_HEURISTIC:
+        game = payoff.build_heuristic_game(
+            competitor_label, user_strategies, competitor_strategies
+        )
+        await _show_matrix(game)
+    else:
+        game = payoff.build_empty_manual_game(
+            competitor_label, user_strategies, competitor_strategies
+        )
+        cl.user_session.set("current_game", game)
+        cl.user_session.set("stage", STAGE_AWAITING_MANUAL_CELL)
+        await _ask_next_manual_cell()
+
+
+async def _ask_next_manual_cell() -> None:
+    game: payoff.Game = cl.user_session.get("current_game")
+    pending = game.pending_cells()
+    if not pending:
+        cl.user_session.set("stage", STAGE_DONE)
+        await _show_matrix(game)
+        return
+    u, c = pending[0]
+    await cl.Message(
+        content=(
+            f"Combinação **\"{u}\"** (sua estratégia) x **\"{c}\"** "
+            f"({game.competitor_label}):\n"
+            "Informe o payoff no formato `seu_valor,valor_do_concorrente` "
+            "(ex.: `3,2`)."
+        )
+    ).send()
+
+
+async def _show_matrix(game: payoff.Game) -> None:
+    matrix_md = payoff.render_matrix_markdown(game)
+    disclaimer = HEURISTIC_DISCLAIMER if game.mode == payoff.MODE_HEURISTIC else ""
+    await cl.Message(
+        content=(
+            f"### Matriz de payoff — Você x {game.competitor_label}\n\n"
+            f"{matrix_md}{disclaimer}"
+        )
+    ).send()
+    cl.user_session.set("current_game", game)
+
+    async with cl.Step(name="Solver de teoria dos jogos (determinístico)") as step:
+        dominant = solver.find_dominant_strategies(game)
+        equilibria = solver.find_pure_nash_equilibria(game)
+        step.output = (
+            f"Dominante — você: {dominant.user_strategy or 'nenhuma'} "
+            f"({dominant.user_dominance or '-'}); "
+            f"concorrente: {dominant.competitor_strategy or 'nenhuma'} "
+            f"({dominant.competitor_dominance or '-'}). "
+            f"Equilíbrios de Nash puros: {equilibria or 'nenhum'}."
+        )
+
+    async with cl.Step(name="Geração da recomendação (Groq / Llama 3)") as step:
+        try:
+            recommendation = generate_recommendation(game, dominant, equilibria)
+            step.output = recommendation
+        except Exception as exc:  # noqa: BLE001
+            step.output = f"Falha: {exc}"
+            await cl.Message(
+                content=(
+                    "A matriz e os resultados do solver foram calculados "
+                    "corretamente, mas não consegui gerar a recomendação em "
+                    f"linguagem natural agora ({exc}). Os resultados brutos "
+                    "do solver estão logo acima, na etapa do solver."
+                )
+            ).send()
+            cl.user_session.set("stage", STAGE_DONE)
+            return
+
+    await cl.Message(
+        content=f"### Recomendação\n\n{recommendation}\n\n---\nEnvie um novo link de concorrente para analisar outro cenário."
+    ).send()
+    cl.user_session.set("stage", STAGE_DONE)
+
+
+def _parse_strategy_list(raw: str) -> list[str]:
+    parts = [p.strip() for chunk in raw.split("\n") for p in chunk.split(",")]
+    return [p for p in parts if p]
+
+
+@cl.on_message
+async def on_message(message: cl.Message) -> None:
+    stage = cl.user_session.get("stage")
+    content = message.content.strip()
+
+    if stage == STAGE_AWAITING_MANUAL_TEXT:
+        company_label = cl.user_session.get("pending_company_label", "Concorrente")
+        await _extract_and_show(company_label, content, source="texto colado manualmente")
+        return
+
+    if stage == STAGE_AWAITING_USER_STRATEGIES:
+        strategies = _parse_strategy_list(content)
+        if len(strategies) < 2:
+            await cl.Message(
+                content=(
+                    "Preciso de pelo menos 2 estratégias suas para montar o "
+                    "jogo. Pode reenviar, separando por vírgula ou uma por "
+                    "linha?"
+                )
+            ).send()
+            return
+        cl.user_session.set("user_strategies", strategies)
+        await _ask_payoff_mode()
+        return
+
+    if stage == STAGE_AWAITING_MANUAL_CELL:
+        game: payoff.Game = cl.user_session.get("current_game")
+        match = MANUAL_CELL_PATTERN.match(content)
+        if not match:
+            await cl.Message(
+                content=(
+                    "Formato inválido. Envie dois números separados por "
+                    "vírgula, ex.: `3,2`."
+                )
+            ).send()
+            return
+        u, c = game.pending_cells()[0]
+        user_payoff = float(match.group(1).replace(",", "."))
+        competitor_payoff = float(match.group(2).replace(",", "."))
+        game.set_cell(u, c, user_payoff, competitor_payoff, is_heuristic=False)
+        await _ask_next_manual_cell()
+        return
+
+    if stage == STAGE_DONE:
+        if content.startswith("http://") or content.startswith("https://"):
+            cl.user_session.set("stage", STAGE_AWAITING_LINK)
+            await on_message(message)
+            return
+        await cl.Message(
+            content=(
+                "Análise deste concorrente concluída. Envie um novo link de "
+                "concorrente para começar outra análise."
+            )
+        ).send()
+        return
+
+    # STAGE_AWAITING_LINK (default)
+    if not (content.startswith("http://") or content.startswith("https://")):
+        await cl.Message(
+            content=(
+                "Isso não parece um link válido. Envie uma URL começando com "
+                "http:// ou https://."
+            )
+        ).send()
+        return
+
+    async with cl.Step(name="Coleta do conteúdo do site") as step:
+        step.input = content
+        try:
+            page = scraping.fetch_page_text(content)
+        except scraping.ScrapingError as exc:
+            step.output = f"Falha: {exc}"
+            cl.user_session.set("stage", STAGE_AWAITING_MANUAL_TEXT)
+            cl.user_session.set("pending_company_label", content)
+            await cl.Message(
+                content=(
+                    f"Não consegui coletar o conteúdo desse link automaticamente "
+                    f"({exc}).\n\nVocê pode colar manualmente, numa próxima "
+                    "mensagem, um trecho de texto do site desse concorrente "
+                    "(ex.: a página \"sobre\" ou a home) para eu continuar a "
+                    "análise."
+                )
+            ).send()
+            return
+        step.output = f"{len(page.text)} caracteres coletados."
+
+    await _extract_and_show(content, page.text, source="scraping automático")
