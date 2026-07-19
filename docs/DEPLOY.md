@@ -43,7 +43,9 @@ cartão de crédito** para o tier gratuito.
 
 Na tela de configuração:
 
-- **Name:** por exemplo `consultor-teoria-dos-jogos`.
+- **Name:** o Render sugere um nome baseado no repositório (neste
+  projeto, ficou `chatbot-decisao-teoria-dos-jogos`) — pode manter o
+  sugerido, é ele que forma o endereço final do site.
 - **Region:** qualquer uma (ex.: Oregon ou a mais próxima do Brasil
   disponível).
 - **Branch:** `main`.
@@ -128,11 +130,16 @@ buildar a imagem a partir do `Dockerfile` e subir o container. Acompanhem
 o progresso na aba **Logs** — o primeiro build costuma levar de 3 a 6
 minutos.
 
-Quando o status virar **Live**, o site estará disponível em uma URL como:
+Quando o status virar **Live**, o site estará disponível na URL real do
+projeto:
 
 ```
-https://consultor-teoria-dos-jogos.onrender.com
+https://chatbot-decisao-teoria-dos-jogos.onrender.com
 ```
+
+(o nome exato vem do que ficou definido no passo 3 — confiram sempre na
+própria página do serviço no painel do Render, logo abaixo do nome, onde
+o link aparece clicável).
 
 ### 6. Importante: "sono" do serviço gratuito
 
