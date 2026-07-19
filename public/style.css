@@ -18,6 +18,11 @@
   --border: 214 20% 85%;
   --input: 214 20% 85%;
   --ring: 160 84% 32%;
+
+  /* Cor/opacidade do tabuleiro de fundo — mais forte no claro, porque o
+     fundo quase branco dá pouco contraste ao verde em baixa opacidade. */
+  --board-tint: 160 70% 30%;
+  --board-alpha: 0.16;
 }
 
 .dark {
@@ -41,6 +46,9 @@
   --sidebar-background: 222 55% 7%;
   --sidebar-primary: 160 84% 39%;
   --sidebar-ring: 160 84% 39%;
+
+  --board-tint: 160 84% 45%;
+  --board-alpha: 0.14;
 }
 
 /* Título com serifa (tom formal de consultoria); corpo permanece sans-serif. */
@@ -49,28 +57,68 @@ h1, h2, h3 {
   letter-spacing: 0.01em;
 }
 
-/* Padrão de tabuleiro de xadrez (quadrados alternados) no cabeçalho,
-   ecoando a matriz de payoff — não apenas linhas de grade. */
-#header {
-  background-image:
-    linear-gradient(45deg, hsl(var(--primary) / 0.10) 25%, transparent 25%),
-    linear-gradient(-45deg, hsl(var(--primary) / 0.10) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, hsl(var(--primary) / 0.10) 75%),
-    linear-gradient(-45deg, transparent 75%, hsl(var(--primary) / 0.10) 75%);
-  background-size: 24px 24px;
-  background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+/* Torna visível o tabuleiro de fundo: o Chainlit pinta o container
+   principal com uma cor sólida (classe utilitária "bg-background" do
+   Tailwind/shadcn); sem isso, o fundo 3D abaixo ficaria escondido atrás
+   dele. */
+.bg-background {
+  background-color: transparent !important;
+}
+body {
+  background-color: hsl(var(--background));
 }
 
-/* Peça de torre como marca do assistente, visível no cabeçalho mesmo se o
-   logo customizado (public/logo_dark.svg / logo_light.svg) não for
-   renderizado pelo layout padrão do Chainlit. */
-#header::before {
-  content: "♜";
+/* Cabeçalho como barra de ferramentas sólida e bem definida, para que os
+   ícones (nova conversa, tema) não pareçam "flutuar" soltos sobre o
+   tabuleiro — o tabuleiro fica só no restante da página, atrás do header. */
+#header {
+  background-color: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
+  position: relative;
+  z-index: 1;
+}
+
+/* Tabuleiro de fundo com efeito 3D (perspectiva de "chão" recuando até o
+   horizonte), visível do topo da página até pouco depois da metade,
+   desaparecendo em degradê a partir daí. */
+body::before {
+  content: "";
+  position: fixed;
+  top: 64px;
+  left: -30%;
+  right: -30%;
+  height: 65vh;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(45deg, hsl(var(--board-tint) / var(--board-alpha)) 25%, transparent 25%),
+    linear-gradient(-45deg, hsl(var(--board-tint) / var(--board-alpha)) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, hsl(var(--board-tint) / var(--board-alpha)) 75%),
+    linear-gradient(-45deg, transparent 75%, hsl(var(--board-tint) / var(--board-alpha)) 75%);
+  background-size: 56px 56px;
+  background-position: 0 0, 0 28px, 28px -28px, -28px 0px;
+  transform: perspective(500px) rotateX(60deg);
+  transform-origin: top center;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 25%, transparent 70%);
+  mask-image: linear-gradient(to bottom, black 0%, black 25%, transparent 70%);
+}
+
+/* Torre clicável injetada no cabeçalho via public/script.js. */
+.sag-rook-icon {
   display: inline-flex;
   align-items: center;
-  font-size: 1.4rem;
+  justify-content: center;
+  font-size: 1.9rem;
   line-height: 1;
   color: hsl(var(--primary));
-  margin-left: 12px;
-  align-self: center;
+  margin-left: 14px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.sag-rook-icon:hover {
+  transform: scale(1.12);
+  color: hsl(var(--primary) / 0.8);
 }
