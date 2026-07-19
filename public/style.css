@@ -49,10 +49,28 @@ h1, h2, h3 {
   letter-spacing: 0.01em;
 }
 
-/* Grid sutil de tabuleiro no cabeçalho, ecoando a matriz de payoff. */
+/* Padrão de tabuleiro de xadrez (quadrados alternados) no cabeçalho,
+   ecoando a matriz de payoff — não apenas linhas de grade. */
 #header {
   background-image:
-    linear-gradient(hsl(var(--border) / 0.35) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--border) / 0.35) 1px, transparent 1px);
-  background-size: 22px 22px;
+    linear-gradient(45deg, hsl(var(--primary) / 0.10) 25%, transparent 25%),
+    linear-gradient(-45deg, hsl(var(--primary) / 0.10) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, hsl(var(--primary) / 0.10) 75%),
+    linear-gradient(-45deg, transparent 75%, hsl(var(--primary) / 0.10) 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+}
+
+/* Peça de torre como marca do assistente, visível no cabeçalho mesmo se o
+   logo customizado (public/logo_dark.svg / logo_light.svg) não for
+   renderizado pelo layout padrão do Chainlit. */
+#header::before {
+  content: "♜";
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: hsl(var(--primary));
+  margin-left: 12px;
+  align-self: center;
 }

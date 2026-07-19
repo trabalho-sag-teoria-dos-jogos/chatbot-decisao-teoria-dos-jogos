@@ -14,7 +14,7 @@ from gamebot import payoff, scraping, solver
 from gamebot.llm import extract_strategies, generate_recommendation
 
 WELCOME_MESSAGE = """\
-## Consultor de Estratégia Competitiva — Teoria dos Jogos
+## ♜ Consultor de Estratégia Competitiva — Teoria dos Jogos
 
 Este assistente ajuda a decidir **qual estratégia competitiva adotar** \
 frente a um concorrente específico, usando conceitos de Teoria dos Jogos \
@@ -26,6 +26,10 @@ negócio como um todo.
 
 Para começar, me envie o **link do site de um concorrente** que você quer \
 analisar (ex.: um site de telemedicina, se seu mercado for saúde digital).
+
+---
+*Projetado por Raiff Nóbrega e Cecília Paiva — Sistemas de Apoio à Gestão, \
+Sistemas de Informação.*
 """
 
 HEURISTIC_DISCLAIMER = (

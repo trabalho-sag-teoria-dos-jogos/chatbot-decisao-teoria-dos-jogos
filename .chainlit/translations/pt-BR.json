@@ -1,0 +1,230 @@
+{
+    "components": {
+        "atoms": {
+            "buttons": {
+                "userButton": {
+                    "menu": {
+                        "settings": "Configurações",
+                        "settingsKey": "S",
+                        "APIKeys": "Chaves de API",
+                        "logout": "Sair"
+                    }
+                }
+            }
+        },
+        "molecules": {
+            "newChatButton": {
+                "newChat": "Nova conversa"
+            },
+            "tasklist": {
+                "TaskList": {
+                    "title": "🗒️ Lista de Tarefas",
+                    "loading": "Carregando...",
+                    "error": "Ocorreu um erro"
+                }
+            },
+            "attachments": {
+                "cancelUpload": "Cancelar envio",
+                "removeAttachment": "Remover anexo"
+            },
+            "newChatDialog": {
+                "createNewChat": "Criar nova conversa?",
+                "clearChat": "Isso vai limpar as mensagens atuais e iniciar uma nova conversa.",
+                "cancel": "Cancelar",
+                "confirm": "Confirmar"
+            },
+            "settingsModal": {
+                "settings": "Configurações",
+                "expandMessages": "Expandir mensagens",
+                "hideChainOfThought": "Ocultar raciocínio (Chain of Thought)",
+                "darkMode": "Modo escuro"
+            },
+            "detailsButton": {
+                "using": "Usando",
+                "used": "Usado"
+            },
+            "auth": {
+                "authLogin": {
+                    "title": "Entre para acessar o aplicativo.",
+                    "form": {
+                        "email": "Endereço de e-mail",
+                        "password": "Senha",
+                        "noAccount": "Não tem uma conta?",
+                        "alreadyHaveAccount": "Já tem uma conta?",
+                        "signup": "Cadastrar",
+                        "signin": "Entrar",
+                        "or": "OU",
+                        "continue": "Continuar",
+                        "forgotPassword": "Esqueceu a senha?",
+                        "passwordMustContain": "Sua senha deve conter:",
+                        "emailRequired": "e-mail é um campo obrigatório",
+                        "passwordRequired": "senha é um campo obrigatório"
+                    },
+                    "error": {
+                        "default": "Não foi possível entrar.",
+                        "signin": "Tente entrar com uma conta diferente.",
+                        "oauthsignin": "Tente entrar com uma conta diferente.",
+                        "redirect_uri_mismatch": "O URI de redirecionamento não corresponde à configuração do app OAuth.",
+                        "oauthcallbackerror": "Tente entrar com uma conta diferente.",
+                        "oauthcreateaccount": "Tente entrar com uma conta diferente.",
+                        "emailcreateaccount": "Tente entrar com uma conta diferente.",
+                        "callback": "Tente entrar com uma conta diferente.",
+                        "oauthaccountnotlinked": "Para confirmar sua identidade, entre com a mesma conta usada originalmente.",
+                        "emailsignin": "Não foi possível enviar o e-mail.",
+                        "emailverify": "Verifique seu e-mail; um novo e-mail foi enviado.",
+                        "credentialssignin": "Falha ao entrar. Verifique se os dados informados estão corretos.",
+                        "sessionrequired": "Entre para acessar esta página."
+                    }
+                },
+                "authVerifyEmail": {
+                    "almostThere": "Quase lá! Enviamos um e-mail para ",
+                    "verifyEmailLink": "Clique no link desse e-mail para concluir seu cadastro.",
+                    "didNotReceive": "Não encontrou o e-mail?",
+                    "resendEmail": "Reenviar e-mail",
+                    "goBack": "Voltar",
+                    "emailSent": "E-mail enviado com sucesso.",
+                    "verifyEmail": "Verifique seu endereço de e-mail"
+                },
+                "providerButton": {
+                    "continue": "Continuar com {{provider}}",
+                    "signup": "Cadastrar com {{provider}}"
+                },
+                "authResetPassword": {
+                    "newPasswordRequired": "Nova senha é um campo obrigatório",
+                    "passwordsMustMatch": "As senhas devem coincidir",
+                    "confirmPasswordRequired": "Confirmar senha é um campo obrigatório",
+                    "newPassword": "Nova senha",
+                    "confirmPassword": "Confirmar senha",
+                    "resetPassword": "Redefinir senha"
+                },
+                "authForgotPassword": {
+                    "email": "Endereço de e-mail",
+                    "emailRequired": "e-mail é um campo obrigatório",
+                    "emailSent": "Verifique o e-mail {{email}} para instruções de redefinição de senha.",
+                    "enterEmail": "Informe seu e-mail e enviaremos instruções para redefinir sua senha.",
+                    "resendEmail": "Reenviar e-mail",
+                    "continue": "Continuar",
+                    "goBack": "Voltar"
+                }
+            }
+        },
+        "organisms": {
+            "chat": {
+                "history": {
+                    "index": {
+                        "showHistory": "Mostrar histórico",
+                        "lastInputs": "Últimas mensagens",
+                        "noInputs": "Nada por aqui...",
+                        "loading": "Carregando..."
+                    }
+                },
+                "inputBox": {
+                    "input": {
+                        "placeholder": "Digite sua mensagem aqui..."
+                    },
+                    "speechButton": {
+                        "start": "Iniciar gravação",
+                        "stop": "Parar gravação",
+                        "loading": "Conectando"
+                    },
+                    "SubmitButton": {
+                        "sendMessage": "Enviar mensagem",
+                        "stopTask": "Parar tarefa"
+                    },
+                    "UploadButton": {
+                        "attachFiles": "Anexar arquivos"
+                    },
+                    "waterMark": {
+                        "text": "Desenvolvido com"
+                    }
+                },
+                "Messages": {
+                    "index": {
+                        "running": "Executando",
+                        "executedSuccessfully": "executado com sucesso",
+                        "failed": "falhou",
+                        "feedbackUpdated": "Feedback atualizado",
+                        "updating": "Atualizando"
+                    }
+                },
+                "dropScreen": {
+                    "dropYourFilesHere": "Solte seus arquivos aqui"
+                },
+                "index": {
+                    "failedToUpload": "Falha ao enviar",
+                    "cancelledUploadOf": "Envio cancelado de",
+                    "couldNotReachServer": "Não foi possível conectar ao servidor",
+                    "continuingChat": "Continuando conversa anterior"
+                },
+                "settings": {
+                    "settingsPanel": "Painel de configurações",
+                    "reset": "Redefinir",
+                    "cancel": "Cancelar",
+                    "confirm": "Confirmar"
+                }
+            },
+            "threadHistory": {
+                "sidebar": {
+                    "filters": {
+                        "FeedbackSelect": {
+                            "feedbackAll": "Feedback: Todos",
+                            "feedbackPositive": "Feedback: Positivo",
+                            "feedbackNegative": "Feedback: Negativo"
+                        },
+                        "SearchBar": {
+                            "search": "Buscar"
+                        }
+                    },
+                    "DeleteThreadButton": {
+                        "confirmMessage": "Isso vai excluir a conversa, junto com suas mensagens e elementos.",
+                        "cancel": "Cancelar",
+                        "confirm": "Confirmar",
+                        "deletingChat": "Excluindo conversa",
+                        "chatDeleted": "Conversa excluída"
+                    },
+                    "index": {
+                        "pastChats": "Conversas anteriores"
+                    },
+                    "ThreadList": {
+                        "empty": "Vazio...",
+                        "today": "Hoje",
+                        "yesterday": "Ontem",
+                        "previous7days": "Últimos 7 dias",
+                        "previous30days": "Últimos 30 dias"
+                    },
+                    "TriggerButton": {
+                        "closeSidebar": "Fechar barra lateral",
+                        "openSidebar": "Abrir barra lateral"
+                    }
+                },
+                "Thread": {
+                    "backToChat": "Voltar para a conversa",
+                    "chatCreatedOn": "Esta conversa foi criada em"
+                }
+            },
+            "header": {
+                "chat": "Conversa",
+                "readme": "Leia-me"
+            }
+        }
+    },
+    "hooks": {
+        "useLLMProviders": {
+            "failedToFetchProviders": "Falha ao buscar provedores:"
+        }
+    },
+    "pages": {
+        "Design": {},
+        "Env": {
+            "savedSuccessfully": "Salvo com sucesso",
+            "requiredApiKeys": "Chaves de API necessárias",
+            "requiredApiKeysInfo": "Para usar este aplicativo, as chaves de API abaixo são necessárias. As chaves ficam armazenadas localmente no seu dispositivo."
+        },
+        "Page": {
+            "notPartOfProject": "Você não faz parte deste projeto."
+        },
+        "ResumeButton": {
+            "resumeChat": "Retomar conversa"
+        }
+    }
+}
