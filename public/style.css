@@ -190,12 +190,24 @@ body, #header, .sag-rook-icon {
   line-height: 1;
   color: hsl(var(--board-tint) / 0.45);
   text-shadow: 0 0 28px hsl(var(--board-tint) / 0.35);
-  /* Acima do texto das mensagens (que fica em z-index:auto dentro do
-     fluxo normal), mas abaixo de qualquer modal/diálogo do Chainlit
-     (que tipicamente usa z-index de centenas/milhares). */
-  z-index: 20;
+  /* Valor máximo de z-index: garante que fique acima de QUALQUER
+     conteúdo da página, independente de contextos de empilhamento
+     internos do Chainlit que não temos como inspecionar por fora.
+     Seguro porque o elemento tem pointer-events:none — nunca bloqueia
+     clique em nada, mesmo estando visualmente por cima. */
+  z-index: 2147483647;
   pointer-events: none;
   user-select: none;
+}
+
+/* Esconde o avatar padrão do bot (a "bolinha" ao lado das mensagens).
+   Ele quebra sempre que o nome do assistente tem acento — o Chainlit
+   rejeita o pedido da imagem (erro 400) e sobra só o círculo cinza vazio
+   de "fallback". Seletor baseado no atributo alt real usado pelo
+   Chainlit (`alt="Avatar for ..."`), não em nomes de classe do Tailwind
+   (que podem mudar entre versões). */
+span:has(> img[alt^="Avatar for"]) {
+  display: none !important;
 }
 
 /* Impede rolagem horizontal: o título do cabeçalho + ícones podem não
