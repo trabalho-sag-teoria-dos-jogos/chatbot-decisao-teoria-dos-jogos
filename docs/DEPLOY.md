@@ -18,7 +18,7 @@
 - `app.py` + `src/gamebot/` — o código da aplicação.
 - `.chainlit/config.toml` + `public/` — identidade visual.
 - Repositório já publicado no GitHub:
-  `https://github.com/CeciliaaPaiva/chatbot-teoriadosjogos`.
+  `https://github.com/trabalho-sag-teoria-dos-jogos/chatbot-decisao-teoria-dos-jogos`.
 
 O único item que falta é específico de cada pessoa/conta: a **chave da
 Groq API**, que nunca deve ir para o repositório.
@@ -36,7 +36,7 @@ cartão de crédito** para o tier gratuito.
 1. No dashboard, clique em **New** → **Web Service**.
 2. Escolha **Build and deploy from a Git repository** e conecte a conta
    do GitHub (autorize o Render a acessar o repositório
-   `chatbot-teoriadosjogos`).
+   `chatbot-decisao-teoria-dos-jogos`).
 3. Selecione o repositório na lista.
 
 ### 3. Configurar o serviço
@@ -67,6 +67,59 @@ Ainda na tela de criação do serviço (ou depois, em **Environment**):
    https://console.groq.com/keys antes de colar aqui).
 3. (Opcional) Adicionem também `GROQ_MODEL` e `GROQ_MODEL_FALLBACK` se
    quiserem trocar os modelos padrão sem alterar código.
+4. Dica: o botão **Add from .env** permite colar de uma vez o conteúdo do
+   arquivo `.env` local (as 3 linhas `GROQ_API_KEY=...`,
+   `GROQ_MODEL=...`, `GROQ_MODEL_FALLBACK=...`), em vez de preencher
+   campo a campo. O Render sempre deixa também uma linha extra em branco
+   com o texto de exemplo `NAME_OF_VARIABLE` pronta para uma variável
+   adicional — se não for usar, pode deixá-la vazia (é ignorada) ou
+   apagá-la pela lixeira.
+
+### 4.1. Seção "Advanced" (mais abaixo, na mesma tela de criação)
+
+O formulário de criação do Web Service tem uma seção recolhível chamada
+**Advanced**, com vários campos técnicos. Nenhum deles é obrigatório para
+este projeto — a orientação padrão é **deixar tudo no valor default**,
+exceto onde indicado abaixo. Detalhando campo a campo, para não deixar
+dúvida:
+
+- **Secret Files** — permite subir um arquivo inteiro (ex.: um `.env`)
+  que fica disponível para a aplicação dentro do container. **Não usem
+  esse campo neste projeto.** Já configuramos a chave da Groq pelo
+  caminho de **Environment Variables** no passo 4 — usar os dois métodos
+  ao mesmo tempo não quebra nada (a variável de ambiente tem prioridade),
+  mas é redundante e confunde na hora de debugar um problema depois.
+- **Health Check Path** — endpoint HTTP que o Render chama
+  periodicamente para saber se o serviço está "saudável". **Deixem em
+  branco.** Não implementamos uma rota `/healthz` neste projeto (foge do
+  escopo da disciplina); sem esse campo preenchido, o Render usa como
+  sinal de saúde apenas o fato de a porta estar respondendo, o que é
+  suficiente aqui.
+- **Registry Credential** — só é necessário quando o serviço puxa uma
+  imagem Docker **já pronta** de um registro privado (ex.: Docker Hub
+  privado). Não é o nosso caso: o Render está **construindo** a imagem a
+  partir do `Dockerfile` de um repositório público no GitHub. Deixem em
+  **No credential**.
+- **Docker Build Context Directory** — pasta usada como raiz durante o
+  build da imagem. Deixem no default (`.`, a raiz do repositório), pois é
+  de lá que o `Dockerfile` copia `requirements.txt`, `app.py` e
+  `src/gamebot/` (via `COPY . .`).
+- **Dockerfile Path** — caminho do `Dockerfile` dentro do repositório.
+  Deixem no default (`./Dockerfile`), que é exatamente onde ele está.
+- **Docker Command** — permite sobrescrever o `CMD` definido no
+  `Dockerfile`. Deixem em branco: o `Dockerfile` já define o comando
+  correto (`chainlit run app.py --host 0.0.0.0 --port ${PORT:-7860}
+  --headless`), incluindo o uso da porta dinâmica do Render.
+- **Pre-Deploy Command** — comando extra rodado antes de cada start (uso
+  típico: migração de banco de dados). Deixem em branco — este projeto
+  não tem banco de dados obrigatório (SQLite é opcional e não está em
+  uso na v1).
+- **Auto-Deploy** — deixem em **On Commit** (valor default). Assim, todo
+  `git push` para a branch `main` republica o site automaticamente, sem
+  precisar repetir os passos manuais.
+- **Build Filters (Included/Ignored Paths)** — permite ignorar mudanças
+  em certas pastas ao decidir se deve rebuildar. Deixem em branco; o
+  projeto é pequeno o suficiente para não precisar dessa otimização.
 
 ### 5. Criar o serviço e aguardar o build
 
