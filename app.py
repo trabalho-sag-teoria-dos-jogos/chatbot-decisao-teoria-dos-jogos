@@ -11,7 +11,12 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 import chainlit as cl
 
 from gamebot import payoff, scraping, solver
-from gamebot.llm import extract_strategies, generate_recommendation, parse_user_strategies
+from gamebot.llm import (
+    extract_strategies,
+    extract_strategies_from_image,
+    generate_recommendation,
+    parse_user_strategies,
+)
 
 WELCOME_MESSAGE = """\
 Este assistente ajuda a decidir **qual estratégia competitiva adotar** \
@@ -23,7 +28,9 @@ Ela **não** avalia viabilidade financeira, operacional ou de mercado do \
 negócio como um todo.
 
 Para começar, me envie o **link do site de um concorrente** que você quer \
-analisar (ex.: um site de telemedicina, se seu mercado for saúde digital).
+analisar (ex.: um site de telemedicina, se seu mercado for saúde digital). \
+Se o link estiver bloqueado para acesso automático, envie um **print da \
+página** (ícone de clipe) ou cole um trecho do texto dela.
 
 ---
 *Projetado por Raiff Nóbrega e Maria Cecília Paiva.*
@@ -55,30 +62,15 @@ async def on_chat_start() -> None:
     await cl.Message(content=WELCOME_MESSAGE).send()
 
 
-async def _extract_and_show(company_label: str, text: str, source: str) -> None:
-    async with cl.Step(name="Extração de estratégias (Groq / Llama 3)") as step:
-        step.input = text[:500]
-        try:
-            strategies = extract_strategies(company_label, text)
-        except Exception as exc:  # noqa: BLE001
-            step.output = f"Falha na extração: {exc}"
-            await cl.Message(
-                content=(
-                    "Não consegui interpretar o texto com o modelo de linguagem "
-                    f"agora ({exc}). Podemos tentar novamente enviando o link "
-                    "de outro concorrente."
-                )
-            ).send()
-            cl.user_session.set("stage", STAGE_AWAITING_LINK)
-            return
-        step.output = f"{len(strategies)} estratégia(s) identificada(s)."
-
+async def _present_strategies(company_label: str, strategies, source: str) -> None:
+    """Exibe as estratégias já extraídas (de texto ou de imagem) e segue
+    o fluxo para pedir as estratégias do próprio usuário."""
     if not strategies:
         await cl.Message(
             content=(
-                "Não identifiquei estratégias claras nesse texto. Pode enviar "
-                "outro link de concorrente, ou colar manualmente um trecho de "
-                "texto relevante do site dele."
+                "Não identifiquei estratégias claras nessa fonte. Pode enviar "
+                "outro link, colar um trecho de texto do site do concorrente, "
+                "ou mandar um print de outra parte da página."
             )
         ).send()
         cl.user_session.set("stage", STAGE_AWAITING_LINK)
@@ -104,6 +96,49 @@ async def _extract_and_show(company_label: str, text: str, source: str) -> None:
             "um atendimento mais rápido que o da concorrência\")."
         )
     ).send()
+
+
+async def _extract_and_show(company_label: str, text: str, source: str) -> None:
+    async with cl.Step(name="Extração de estratégias (Groq / Llama 3)") as step:
+        step.input = text[:500]
+        try:
+            strategies = extract_strategies(company_label, text)
+        except Exception as exc:  # noqa: BLE001
+            step.output = f"Falha na extração: {exc}"
+            await cl.Message(
+                content=(
+                    "Não consegui interpretar o texto com o modelo de linguagem "
+                    f"agora ({exc}). Podemos tentar novamente enviando o link "
+                    "de outro concorrente."
+                )
+            ).send()
+            cl.user_session.set("stage", STAGE_AWAITING_LINK)
+            return
+        step.output = f"{len(strategies)} estratégia(s) identificada(s)."
+
+    await _present_strategies(company_label, strategies, source)
+
+
+async def _extract_and_show_from_image(
+    company_label: str, image_bytes: bytes, mime_type: str, source: str
+) -> None:
+    async with cl.Step(name="Leitura da imagem (Groq / visão)") as step:
+        step.input = f"Imagem ({mime_type}, {len(image_bytes)} bytes)"
+        try:
+            strategies = extract_strategies_from_image(company_label, image_bytes, mime_type)
+        except Exception as exc:  # noqa: BLE001
+            step.output = f"Falha na leitura da imagem: {exc}"
+            await cl.Message(
+                content=(
+                    "Não consegui interpretar essa imagem agora "
+                    f"({exc}). Pode tentar enviar de novo, ou colar um "
+                    "trecho de texto do site do concorrente em vez disso."
+                )
+            ).send()
+            return
+        step.output = f"{len(strategies)} estratégia(s) identificada(s)."
+
+    await _present_strategies(company_label, strategies, source)
 
 
 async def _ask_payoff_mode() -> None:
@@ -216,6 +251,26 @@ def _parse_strategy_list_fallback(raw: str) -> list[str]:
     return [line for line in lines if line]
 
 
+def _first_image_element(message: cl.Message) -> cl.Image | None:
+    """Retorna o primeiro anexo de imagem da mensagem, se houver — usado
+    como alternativa ao link/texto quando o site do concorrente está
+    bloqueado, mas o usuário consegue enviar um print da página (RF02/RF14)."""
+    for element in message.elements or []:
+        if (element.mime or "").startswith("image/"):
+            return element
+    return None
+
+
+def _read_image_bytes(element: cl.Image) -> bytes:
+    if element.content:
+        content = element.content
+        return content if isinstance(content, bytes) else content.encode("utf-8")
+    if element.path:
+        with open(element.path, "rb") as f:
+            return f.read()
+    raise RuntimeError("Imagem recebida sem conteúdo nem caminho de arquivo.")
+
+
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
     stage = cl.user_session.get("stage")
@@ -223,6 +278,24 @@ async def on_message(message: cl.Message) -> None:
 
     if stage == STAGE_AWAITING_MANUAL_TEXT:
         company_label = cl.user_session.get("pending_company_label", "Concorrente")
+        image_element = _first_image_element(message)
+        if image_element is not None:
+            await _extract_and_show_from_image(
+                company_label,
+                _read_image_bytes(image_element),
+                image_element.mime or "image/png",
+                source="print enviado pelo usuário",
+            )
+            return
+        if not content:
+            await cl.Message(
+                content=(
+                    "Não recebi texto nem imagem. Cole um trecho do site do "
+                    "concorrente, ou envie um print da página (ícone de "
+                    "clipe, abaixo do campo de mensagem)."
+                )
+            ).send()
+            return
         await _extract_and_show(company_label, content, source="texto colado manualmente")
         return
 
@@ -281,11 +354,24 @@ async def on_message(message: cl.Message) -> None:
         return
 
     # STAGE_AWAITING_LINK (default)
+    image_element = _first_image_element(message)
+    if image_element is not None:
+        company_label = content if content else "Concorrente (via imagem)"
+        await _extract_and_show_from_image(
+            company_label,
+            _read_image_bytes(image_element),
+            image_element.mime or "image/png",
+            source="print enviado pelo usuário",
+        )
+        return
+
     if not (content.startswith("http://") or content.startswith("https://")):
         await cl.Message(
             content=(
                 "Isso não parece um link válido. Envie uma URL começando com "
-                "http:// ou https://."
+                "http:// ou https://, ou mande um print da página do "
+                "concorrente (ícone de clipe, abaixo do campo de mensagem) "
+                "se o link estiver bloqueado."
             )
         ).send()
         return

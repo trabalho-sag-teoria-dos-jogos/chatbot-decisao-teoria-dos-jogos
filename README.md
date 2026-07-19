@@ -92,8 +92,11 @@ A aplicação sobe em `http://localhost:8000`.
    concorrente que você quer analisar (ex.: a home de um site de
    telemedicina).
    - Se o sistema não conseguir coletar o conteúdo automaticamente
-     (bloqueio, site dependente de JavaScript, etc.), ele vai pedir que
-     você **cole manualmente** um trecho de texto do site.
+     (bloqueio, site dependente de JavaScript, etc.), você pode **colar um
+     trecho de texto** do site, ou **enviar um print (imagem)** da página
+     pelo ícone de clipe — nesse caso, um modelo de visão da Groq
+     interpreta a imagem. Também dá para pular direto para o print, sem
+     tentar o link primeiro, se você já souber que ele está bloqueado.
 2. **Confira as estratégias identificadas.** O sistema extrai, via LLM,
    entre 2 e 4 estratégias prováveis do concorrente, cada uma com um
    trecho do texto original como evidência.

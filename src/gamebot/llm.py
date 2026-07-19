@@ -10,6 +10,7 @@ mitigação de risco de alucinação documentada em
 
 from __future__ import annotations
 
+import base64
 import json
 from dataclasses import dataclass
 
@@ -117,6 +118,73 @@ def extract_strategies(company_label: str, text: str) -> list[StrategyCandidate]
         f"Texto extraído do site (pode estar truncado):\n\"\"\"\n{text}\n\"\"\""
     )
     data = _chat_json(EXTRACTION_SYSTEM_PROMPT, user_prompt)
+    raw_strategies = data.get("strategies", [])
+    return [
+        StrategyCandidate(
+            strategy=str(item.get("strategy", "")).strip(),
+            evidence=str(item.get("evidence", "")).strip(),
+        )
+        for item in raw_strategies
+        if item.get("strategy")
+    ]
+
+
+IMAGE_EXTRACTION_SYSTEM_PROMPT = """\
+Você é um analista de estratégia competitiva. Você recebe uma imagem
+(print de tela) da página de uma empresa concorrente, usada quando o link
+da página não pôde ser acessado diretamente (bloqueio, exige login, etc.).
+
+Regras estritas:
+- Baseie-se SOMENTE no que está visível na imagem. Não invente informação
+  que não esteja nela.
+- Para cada estratégia identificada, descreva em "evidence" o que na
+  imagem embasa essa conclusão (ex.: "preço R$ 39,90 exibido no botão
+  principal", "selo de destaque 'atendimento 24h'").
+- Identifique entre 2 e 4 estratégias.
+- Se a imagem não tiver relação com uma página de concorrente (ex.: foto
+  aleatória, tela em branco), devolva uma lista vazia em vez de inventar.
+- Responda em português do Brasil.
+- Responda EXCLUSIVAMENTE em JSON válido, no formato:
+  {"strategies": [{"strategy": "nome curto da estratégia", "evidence": "o que na imagem embasa isso"}]}
+"""
+
+
+def extract_strategies_from_image(
+    company_label: str, image_bytes: bytes, mime_type: str
+) -> list[StrategyCandidate]:
+    """Extrai estratégias competitivas a partir de um print da página do
+    concorrente (RF02/RF14 — alternativa quando o link está bloqueado para
+    scraping, mas o usuário consegue acessar e fotografar a página)."""
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+    data_url = f"data:{mime_type};base64,{encoded}"
+
+    client = _get_client()
+    try:
+        response = client.chat.completions.create(
+            model=config.GROQ_VISION_MODEL,
+            messages=[
+                {"role": "system", "content": IMAGE_EXTRACTION_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Empresa concorrente: {company_label}",
+                        },
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                },
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+        )
+        content = response.choices[0].message.content
+        data = json.loads(content)
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(
+            f"Falha ao consultar o modelo de visão da Groq ({config.GROQ_VISION_MODEL}): {exc}"
+        ) from exc
+
     raw_strategies = data.get("strategies", [])
     return [
         StrategyCandidate(

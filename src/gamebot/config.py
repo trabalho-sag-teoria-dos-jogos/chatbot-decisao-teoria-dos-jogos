@@ -11,6 +11,9 @@ load_dotenv()
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_MODEL_FALLBACK = os.environ.get("GROQ_MODEL_FALLBACK", "llama-3.1-8b-instant")
+# Modelo com suporte a imagem (RF02/RF14 — fallback quando o link do
+# concorrente está bloqueado e o usuário manda um print da página).
+GROQ_VISION_MODEL = os.environ.get("GROQ_VISION_MODEL", "qwen/qwen3.6-27b")
 
 
 def require_groq_api_key() -> str:

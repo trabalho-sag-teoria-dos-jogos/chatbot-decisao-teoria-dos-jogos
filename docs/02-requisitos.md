@@ -17,7 +17,7 @@
 | RF11 | O sistema deve indicar claramente ao usuário quando um payoff é heurístico (estimado) vs. inserido manualmente. | Alta |
 | RF12 | O sistema deve permitir editar/refazer a análise com novos valores de payoff sem repetir o scraping. | Média |
 | RF13 | O sistema deve salvar o histórico de análises realizadas pelo usuário. | Baixa |
-| RF14 | O sistema deve tratar falhas de scraping (site indisponível, bloqueio) oferecendo entrada manual de texto como alternativa. | Média |
+| RF14 | O sistema deve tratar falhas de scraping (site indisponível, bloqueio) oferecendo alternativas: entrada manual de texto ou envio de um print (imagem) da página do concorrente, interpretado por um modelo de visão. | Média |
 
 ## 2. Requisitos Não Funcionais (RNF)
 
