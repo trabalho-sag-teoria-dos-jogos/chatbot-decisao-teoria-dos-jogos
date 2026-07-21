@@ -133,7 +133,17 @@ def build_heuristic_game(
     user_strategies: list[str],
     competitor_strategies: list[str],
     category_map: dict[str, str] | None = None,
+    pair_scores: dict[tuple[str, str], int] | None = None,
 ) -> Game:
+    """Monta a matriz heurística. Prioridade de fonte do payoff, da mais
+    para a menos granular:
+    1. `pair_scores` — nota 1-3 dada pelo LLM direto para aquela
+       combinação específica (`gamebot.llm.score_heuristic_payoffs`).
+    2. `category_map` — categoria (custo/diferenciação/nicho/geral) dada
+       pelo LLM por estratégia (`gamebot.llm.classify_strategies`).
+    3. Nenhum dos dois: classificação por palavras-chave (fallback local,
+       sem chamada de API).
+    """
     game = Game(
         competitor_label=competitor_label,
         user_strategies=user_strategies,
@@ -142,7 +152,11 @@ def build_heuristic_game(
     )
     for u in user_strategies:
         for c in competitor_strategies:
-            up, cp = heuristic_payoff_pair(u, c, category_map=category_map)
+            score = pair_scores.get((u, c)) if pair_scores else None
+            if score is not None:
+                up, cp = score, score
+            else:
+                up, cp = heuristic_payoff_pair(u, c, category_map=category_map)
             game.set_cell(u, c, up, cp, is_heuristic=True)
     return game
 

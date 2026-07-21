@@ -17,6 +17,7 @@ from gamebot.llm import (
     extract_strategies_from_image,
     generate_recommendation,
     parse_user_strategies,
+    score_heuristic_payoffs,
 )
 
 WELCOME_MESSAGE = """\
@@ -169,20 +170,42 @@ async def _ask_payoff_mode() -> None:
     user_strategies = cl.user_session.get("user_strategies")
 
     if mode == payoff.MODE_HEURISTIC:
-        async with cl.Step(name="Classificação das estratégias (Groq / Llama 3)") as step:
-            all_strategies = user_strategies + competitor_strategies
-            step.input = ", ".join(all_strategies)
+        pair_scores = None
+        category_map = None
+
+        async with cl.Step(name="Pontuação heurística por combinação (Groq / Llama 3)") as step:
             try:
-                category_map = classify_strategies(all_strategies)
+                pair_scores = score_heuristic_payoffs(user_strategies, competitor_strategies)
+                if len(pair_scores) < len(user_strategies) * len(competitor_strategies):
+                    raise RuntimeError("resposta incompleta do modelo (faltaram combinações)")
             except Exception as exc:  # noqa: BLE001
-                step.output = f"Falha, usando palavras-chave: {exc}"
-                category_map = None
+                step.output = f"Falha, tentando classificação por categoria: {exc}"
+                pair_scores = None
             else:
-                step.output = ", ".join(
-                    f"{s} → {category_map.get(s, 'geral')}" for s in all_strategies
+                step.output = "; ".join(
+                    f"{u} x {c} = {s}" for (u, c), s in pair_scores.items()
                 )
+
+        if pair_scores is None:
+            async with cl.Step(name="Classificação por categoria (fallback, Groq / Llama 3)") as step:
+                all_strategies = user_strategies + competitor_strategies
+                step.input = ", ".join(all_strategies)
+                try:
+                    category_map = classify_strategies(all_strategies)
+                except Exception as exc:  # noqa: BLE001
+                    step.output = f"Falha, usando palavras-chave: {exc}"
+                    category_map = None
+                else:
+                    step.output = ", ".join(
+                        f"{s} → {category_map.get(s, 'geral')}" for s in all_strategies
+                    )
+
         game = payoff.build_heuristic_game(
-            competitor_label, user_strategies, competitor_strategies, category_map
+            competitor_label,
+            user_strategies,
+            competitor_strategies,
+            category_map=category_map,
+            pair_scores=pair_scores,
         )
         await _show_matrix(game)
     else:

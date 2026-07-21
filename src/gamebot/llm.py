@@ -163,6 +163,68 @@ def classify_strategies(strategies: list[str]) -> dict[str, str]:
     return result
 
 
+PAIR_SCORING_SYSTEM_PROMPT = """\
+Você atribui payoffs heurísticos (ganho relativo) para um jogo de teoria
+dos jogos entre um usuário/empreendedor e um concorrente, um payoff para
+cada combinação (estratégia do usuário x estratégia do concorrente).
+
+Escala ORDINAL FIXA: 1 (baixo), 2 (médio) ou 3 (alto) — nunca outro valor.
+
+Regra: quanto mais as duas estratégias da combinação competem pelo MESMO
+público ou pela MESMA necessidade (alta sobreposição — ex.: as duas
+prometem "atendimento rápido"), MENOR o payoff para os dois lados (mais
+rivalidade direta, ganho menor para ambos). Quanto mais elas atendem
+públicos, necessidades ou posicionamentos DIFERENTES ou COMPLEMENTARES
+(baixa sobreposição — ex.: uma foca em preço, a outra em tecnologia),
+MAIOR o payoff para os dois lados (menos rivalidade direta).
+
+Regras estritas:
+- Avalie cada combinação pelo SENTIDO real das duas estratégias
+  envolvidas, não por categorias fixas nem por palavras-chave literais.
+- O payoff é o MESMO valor para os dois jogadores na mesma combinação —
+  este modelo heurístico mede o grau de sobreposição competitiva, não
+  ganho individual diferenciado.
+- Dê um score para CADA combinação listada, sem pular nenhuma.
+- Use os valores 1, 2 e 3 de forma proporcional ao que você observar —
+  não force tudo para o mesmo valor nem varie sem justificativa.
+- Responda em português do Brasil.
+- Responda EXCLUSIVAMENTE em JSON válido, no formato:
+  {"scores": [{"user_strategy": "texto exato", "competitor_strategy": "texto exato", "score": 1}]}
+"""
+
+
+def score_heuristic_payoffs(
+    user_strategies: list[str], competitor_strategies: list[str]
+) -> dict[tuple[str, str], int]:
+    """Pontua diretamente (escala 1-3, RD02) cada combinação de estratégia
+    do usuário x estratégia do concorrente, pelo grau de sobreposição
+    competitiva — mais granular do que classificar cada estratégia
+    isoladamente em 4 categorias fixas (`classify_strategies`), que gerava
+    linhas/colunas inteiras com o mesmo valor sempre que várias estratégias
+    caíam na mesma categoria."""
+    if not user_strategies or not competitor_strategies:
+        return {}
+    pairs_text = "\n".join(
+        f"- Usuário: \"{u}\" | Concorrente: \"{c}\""
+        for u in user_strategies
+        for c in competitor_strategies
+    )
+    user_prompt = f"Combinações a pontuar:\n{pairs_text}"
+    data = _chat_json(PAIR_SCORING_SYSTEM_PROMPT, user_prompt)
+    raw = data.get("scores", [])
+    result: dict[tuple[str, str], int] = {}
+    for item in raw:
+        u = str(item.get("user_strategy", "")).strip()
+        c = str(item.get("competitor_strategy", "")).strip()
+        try:
+            score = int(item.get("score"))
+        except (TypeError, ValueError):
+            continue
+        if u and c and score in (1, 2, 3):
+            result[(u, c)] = score
+    return result
+
+
 def extract_strategies(company_label: str, text: str) -> list[StrategyCandidate]:
     """Extrai estratégias competitivas prováveis a partir do texto coletado (RF03)."""
     user_prompt = (
