@@ -76,13 +76,20 @@ async def _present_strategies(company_label: str, strategies, source: str) -> No
             content=(
                 f"{found} nessa fonte, e preciso de pelo menos 2 para montar "
                 "um jogo de verdade (uma matriz com 1 coluna não permite "
-                "comparar nada). Pode enviar outro link, colar um trecho "
-                "maior de texto do site do concorrente, ou mandar um print "
-                "de outra parte da página (com mais informação sobre preço, "
-                "diferenciais, público-alvo etc.)?"
+                "comparar nada). Pode colar um trecho **maior** de texto do "
+                "site do concorrente, mandar um **print** de outra parte da "
+                "página (com mais informação sobre preço, diferenciais, "
+                "público-alvo etc.), ou enviar um **link novo** de outro "
+                "concorrente?"
             )
         ).send()
-        cl.user_session.set("stage", STAGE_AWAITING_LINK)
+        # Vai para STAGE_AWAITING_MANUAL_TEXT (não STAGE_AWAITING_LINK): a
+        # próxima mensagem do usuário deve ser tratada como texto/imagem
+        # sobre ESSE MESMO concorrente, não como nome de uma empresa nova
+        # para buscar na internet — esse era exatamente o bug relatado
+        # (um trecho de texto colado sendo tratado como nome de empresa).
+        cl.user_session.set("pending_company_label", company_label)
+        cl.user_session.set("stage", STAGE_AWAITING_MANUAL_TEXT)
         return
 
     lines = [f"### Estratégias identificadas — {company_label} ({source})\n"]
@@ -367,6 +374,17 @@ def _normalize_url(text: str) -> str | None:
     return None
 
 
+def _looks_like_pasted_text(text: str) -> bool:
+    """Distingue um nome de empresa (curto, poucas palavras — ex.:
+    "Doctoralia") de um trecho de texto colado do site (mais longo,
+    várias palavras/frases). Necessário porque os dois chegam como texto
+    livre sem link nem imagem, e precisam de tratamento bem diferente:
+    nome vai para busca na internet, texto colado vai direto para
+    extração."""
+    stripped = text.strip()
+    return len(stripped) > 100 or stripped.count(" ") > 12
+
+
 async def _fetch_and_extract_by_url(url: str) -> None:
     async with cl.Step(name="Coleta do conteúdo do site") as step:
         step.input = url
@@ -449,6 +467,13 @@ async def on_message(message: cl.Message) -> None:
                     "clipe, abaixo do campo de mensagem)."
                 )
             ).send()
+            return
+        # O usuário pode optar por mandar um link novo em vez de colar
+        # texto (uma das opções que oferecemos nesta etapa) — nesse caso,
+        # tratamos como link, não como o texto em si.
+        possible_url = _normalize_url(content)
+        if possible_url is not None:
+            await _fetch_and_extract_by_url(possible_url)
             return
         await _extract_and_show(company_label, content, source="texto colado manualmente")
         return
@@ -535,6 +560,18 @@ async def on_message(message: cl.Message) -> None:
         await _fetch_and_extract_by_url(normalized_url)
         return
 
-    # Não é link nem imagem: trata como nome do concorrente e tenta buscar
-    # na internet (com fallback automático se a busca falhar).
+    # Não é link nem imagem. Um nome de empresa é curto (poucas palavras);
+    # um trecho de texto colado do site é mais longo. Tratar os dois casos
+    # do mesmo jeito foi o bug relatado (texto colado sendo interpretado
+    # como nome de empresa e mandado para a busca na internet, que é lenta
+    # e instável). Texto longo vai direto para extração; só texto curto
+    # tenta a busca por nome.
+    if _looks_like_pasted_text(content):
+        await _extract_and_show(
+            content[:60] + ("…" if len(content) > 60 else ""),
+            content,
+            source="texto colado pelo usuário",
+        )
+        return
+
     await _search_and_show(content)
