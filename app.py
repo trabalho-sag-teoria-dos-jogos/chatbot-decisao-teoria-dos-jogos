@@ -68,12 +68,18 @@ async def on_chat_start() -> None:
 async def _present_strategies(company_label: str, strategies, source: str) -> None:
     """Exibe as estratégias já extraídas (de texto ou de imagem) e segue
     o fluxo para pedir as estratégias do próprio usuário."""
-    if not strategies:
+    # RD01: mínimo de 2 estratégias por jogador — com só 1 (ou 0), a matriz
+    # fica degenerada (uma coluna só) e o cálculo perde sentido prático.
+    if len(strategies) < 2:
+        found = f"Só encontrei {len(strategies)} estratégia clara" if strategies else "Não identifiquei estratégias claras"
         await cl.Message(
             content=(
-                "Não identifiquei estratégias claras nessa fonte. Pode enviar "
-                "outro link, colar um trecho de texto do site do concorrente, "
-                "ou mandar um print de outra parte da página."
+                f"{found} nessa fonte, e preciso de pelo menos 2 para montar "
+                "um jogo de verdade (uma matriz com 1 coluna não permite "
+                "comparar nada). Pode enviar outro link, colar um trecho "
+                "maior de texto do site do concorrente, ou mandar um print "
+                "de outra parte da página (com mais informação sobre preço, "
+                "diferenciais, público-alvo etc.)?"
             )
         ).send()
         cl.user_session.set("stage", STAGE_AWAITING_LINK)
@@ -258,6 +264,40 @@ async def _show_matrix(game: payoff.Game) -> None:
             f"Equilíbrios de Nash puros: {equilibria or 'nenhum'}."
         )
 
+    # RF09: o conceito usado precisa ficar sempre visível — este resumo é
+    # gerado direto do resultado do solver (determinístico), não depende
+    # do LLM acertar a redação nem de o usuário rolar a tela até achar a
+    # menção dentro do texto corrido da recomendação.
+    concept_lines = ["### Conceito de Teoria dos Jogos utilizado\n"]
+    if dominant.user_strategy:
+        concept_lines.append(
+            f"- **Estratégia dominante ({dominant.user_dominance})** para "
+            f"você: \"{dominant.user_strategy}\" — essa estratégia iguala ou "
+            "supera as outras suas, não importa o que o concorrente faça."
+        )
+    else:
+        concept_lines.append(
+            "- **Estratégia dominante:** não existe uma estratégia sua que "
+            "seja sempre igual ou melhor que as outras em todos os cenários "
+            "— isso também é um resultado válido, não uma falha."
+        )
+    if equilibria:
+        pares = "; ".join(f"\"{u}\" x \"{c}\"" for u, c in equilibria)
+        concept_lines.append(
+            f"- **Equilíbrio de Nash em estratégia pura:** encontrado em "
+            f"{len(equilibria)} combinação(ões) — {pares}. Nessas "
+            "combinações, nem você nem o concorrente melhoram desviando "
+            "sozinhos da estratégia escolhida."
+        )
+    else:
+        concept_lines.append(
+            "- **Equilíbrio de Nash em estratégia pura:** não foi "
+            "encontrado nenhum nessa matriz — também é um resultado válido "
+            "(o jogo só teria solução em estratégia mista, fora do escopo "
+            "desta versão)."
+        )
+    await cl.Message(content="\n".join(concept_lines)).send()
+
     async with cl.Step(name="Geração da recomendação (Groq / Llama 3)") as step:
         try:
             recommendation = generate_recommendation(game, dominant, equilibria)
@@ -266,17 +306,16 @@ async def _show_matrix(game: payoff.Game) -> None:
             step.output = f"Falha: {exc}"
             await cl.Message(
                 content=(
-                    "A matriz e os resultados do solver foram calculados "
-                    "corretamente, mas não consegui gerar a recomendação em "
-                    f"linguagem natural agora ({exc}). Os resultados brutos "
-                    "do solver estão logo acima, na etapa do solver."
+                    "Não consegui gerar a explicação em linguagem natural "
+                    f"agora ({exc}), mas o conceito e o resultado do solver "
+                    "já estão confirmados na mensagem acima."
                 )
             ).send()
             cl.user_session.set("stage", STAGE_DONE)
             return
 
     await cl.Message(
-        content=f"### Recomendação\n\n{recommendation}\n\n---\nEnvie um novo link de concorrente para analisar outro cenário."
+        content=f"### Recomendação\n\n{recommendation}\n\n---\nEnvie o próximo concorrente (nome, link, texto ou print) para analisar outro cenário."
     ).send()
     cl.user_session.set("stage", STAGE_DONE)
 
