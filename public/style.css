@@ -85,18 +85,28 @@ body {
   border-bottom: 1px solid hsl(var(--border));
   position: relative;
   z-index: 2;
+  /* Altura mínima (não fixa): se o título precisar quebrar linha em
+     telas muito estreitas, o cabeçalho cresce para acomodar em vez de
+     cortar o conteúdo. */
   min-height: 48px !important;
-  height: 48px !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+  height: auto !important;
+  padding: 6px 0 !important;
+  flex-wrap: wrap;
 }
 
 .sag-header-title {
   font-family: "Georgia", "Times New Roman", serif;
   font-weight: 600;
-  font-size: 0.95rem;
+  /* Fonte fluida: encolhe suavemente em telas estreitas (celular). O
+     nome do site nunca deve ficar oculto nem cortado — se ainda assim
+     não couber numa linha, ele quebra para a linha de baixo (ver
+     white-space abaixo), nunca trunca com reticências nem some. */
+  font-size: clamp(0.75rem, 3.4vw, 0.95rem);
   color: hsl(var(--foreground));
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.2;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 /* Tabuleiro de fundo com efeito 3D: ancorado como um "chão" perto do
@@ -235,21 +245,16 @@ body, #header, .sag-rook-icon {
   display: none !important;
 }
 
-/* Impede rolagem horizontal: o título do cabeçalho + ícones podem não
-   caber em telas muito estreitas; em vez de estourar a largura da janela
-   (gerando barra de rolagem horizontal), escondemos o texto do título
-   nessas larguras e mantemos só o ícone — padrão comum de design
-   responsivo. */
+/* Impede rolagem horizontal. O nome do site permanece sempre visível na
+   barra superior (não é escondido em telas estreitas): a fonte encolhe
+   de forma fluida e, se ainda assim não couber numa linha, o título
+   quebra para a linha de baixo — ver .sag-header-title e #header
+   (height:auto/flex-wrap) acima. */
 html, body {
   overflow-x: hidden;
 }
 #header {
   overflow-x: hidden;
-}
-@media (max-width: 520px) {
-  .sag-header-title {
-    display: none;
-  }
 }
 
 /* Barra de rolagem sempre escura, discreta, independente do tema claro ou
