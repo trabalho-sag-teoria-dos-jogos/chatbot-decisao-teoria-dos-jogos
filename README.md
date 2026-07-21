@@ -88,15 +88,18 @@ A aplicação sobe em `http://localhost:8000`.
 
 ## Como usar o chatbot (passo a passo)
 
-1. **Envie o link de um concorrente.** Cole a URL de uma página pública do
-   concorrente que você quer analisar (ex.: a home de um site de
-   telemedicina).
-   - Se o sistema não conseguir coletar o conteúdo automaticamente
-     (bloqueio, site dependente de JavaScript, etc.), você pode **colar um
-     trecho de texto** do site, ou **enviar um print (imagem)** da página
-     pelo ícone de clipe — nesse caso, um modelo de visão da Groq
-     interpreta a imagem. Também dá para pular direto para o print, sem
-     tentar o link primeiro, se você já souber que ele está bloqueado.
+1. **Informe o concorrente que você quer analisar.** Pode ser de 4 formas:
+   - **O link do site** (com ou sem `http(s)://`/`www.` — o sistema
+     completa sozinho).
+   - **Só o nome da empresa** (ex.: "Doctoralia") — o sistema tenta
+     pesquisar na internet e visitar o site oficial sozinho (via Groq
+     Compound). Se a busca não funcionar (tier gratuito da Groq pode
+     limitar isso), ele pede uma das opções abaixo.
+   - **Um trecho de texto** do site do concorrente, colado diretamente.
+   - **Um print (imagem)** da página, pelo ícone de clipe — um modelo de
+     visão da Groq interpreta a imagem.
+   - Se o link estiver bloqueado para acesso automático, o sistema
+     oferece as outras opções como alternativa.
 2. **Confira as estratégias identificadas.** O sistema extrai, via LLM,
    entre 2 e 4 estratégias prováveis do concorrente, cada uma com um
    trecho do texto original como evidência.

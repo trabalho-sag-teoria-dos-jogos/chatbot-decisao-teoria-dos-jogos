@@ -4,7 +4,7 @@
 
 | ID | Requisito | Prioridade |
 |---|---|---|
-| RF01 | O sistema deve permitir que o usuário informe, via chat, o link de uma ou mais páginas de concorrentes. | Alta |
+| RF01 | O sistema deve permitir que o usuário informe, via chat, o link de uma ou mais páginas de concorrentes (com tolerância a URLs sem `http(s)://`/`www.`), ou apenas o nome do concorrente — nesse caso, o sistema tenta localizar e visitar o site oficial sozinho via busca na internet, com fallback para pedir link/texto/print se a busca falhar. | Alta |
 | RF02 | O sistema deve coletar (scraping) o conteúdo textual das páginas informadas. | Alta |
 | RF03 | O sistema deve extrair, via LLM, possíveis estratégias competitivas do concorrente a partir do texto coletado. | Alta |
 | RF04 | O sistema deve permitir que o usuário informe suas próprias estratégias possíveis (ex.: preço baixo, diferenciação, nicho). | Alta |

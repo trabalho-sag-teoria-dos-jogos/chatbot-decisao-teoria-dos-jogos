@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from dataclasses import dataclass
 
 from groq import Groq
@@ -308,6 +309,70 @@ def extract_strategies_from_image(
         for item in raw_strategies
         if item.get("strategy")
     ]
+
+
+SEARCH_COMPETITOR_SYSTEM_PROMPT = """\
+Você é um pesquisador de mercado. Você recebe o nome de uma empresa
+concorrente (e, às vezes, o contexto do mercado) e deve:
+
+1. Pesquisar na internet e encontrar o site oficial dessa empresa.
+2. Visitar esse site e reunir informações reais sobre ela: preços,
+   diferenciais, público-alvo, funcionalidades, posicionamento de
+   marketing.
+
+Regras estritas:
+- Baseie-se SOMENTE em fontes reais que você pesquisou. Nunca invente
+  informação sobre a empresa.
+- Se não conseguir encontrar o site oficial com confiança, diga isso
+  explicitamente em vez de adivinhar.
+- Ao final da sua resposta, em uma linha própria, informe exatamente:
+  "URL: <endereço do site oficial encontrado>" (ou "URL: não encontrada"
+  se não achou).
+- Responda em português do Brasil, em texto corrido (não em JSON).
+"""
+
+_URL_LINE_PATTERN = re.compile(r"URL:\s*(\S+)", re.IGNORECASE)
+
+
+def search_competitor_by_name(company_name: str, market_context: str = "") -> tuple[str | None, str]:
+    """Usa o sistema Compound da Groq (busca na internet + visita de site
+    reais, via Tavily) para localizar e resumir informações sobre um
+    concorrente do qual o usuário só sabe o nome, não o link (RF02).
+
+    Retorna (url_encontrada_ou_None, resumo_em_texto). O resumo é depois
+    estruturado em estratégias pela função `extract_strategies` já
+    existente e testada — a parte nova (busca) fica isolada, então uma
+    falha aqui não compromete o caminho já validado de extração de texto.
+    """
+    context_line = f" (mercado: {market_context})" if market_context else ""
+    user_prompt = f"Empresa concorrente: {company_name}{context_line}"
+
+    client = _get_client()
+    try:
+        response = client.chat.completions.create(
+            model=config.GROQ_COMPOUND_MODEL,
+            messages=[
+                {"role": "system", "content": SEARCH_COMPETITOR_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(
+            f"Falha ao consultar o sistema de busca da Groq ({config.GROQ_COMPOUND_MODEL}): {exc}"
+        ) from exc
+
+    content = response.choices[0].message.content or ""
+    match = _URL_LINE_PATTERN.search(content)
+    url = None
+    if match:
+        candidate = match.group(1).strip().rstrip(".,)")
+        if candidate.lower() not in ("não", "nao", "n/a", "none") and candidate.startswith(
+            ("http://", "https://")
+        ):
+            url = candidate
+
+    return url, content
 
 
 RECOMMENDATION_SYSTEM_PROMPT = """\

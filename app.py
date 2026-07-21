@@ -18,6 +18,7 @@ from gamebot.llm import (
     generate_recommendation,
     parse_user_strategies,
     score_heuristic_payoffs,
+    search_competitor_by_name,
 )
 
 WELCOME_MESSAGE = """\
@@ -29,10 +30,10 @@ frente a um concorrente específico, usando conceitos de Teoria dos Jogos \
 Ela **não** avalia viabilidade financeira, operacional ou de mercado do \
 negócio como um todo.
 
-Para começar, me envie o **link do site de um concorrente** que você quer \
-analisar (ex.: um site de telemedicina, se seu mercado for saúde digital). \
-Se o link estiver bloqueado para acesso automático, envie um **print da \
-página** (ícone de clipe) ou cole um trecho do texto dela.
+Para começar, me diga o **concorrente que você quer analisar** — pode ser \
+só o nome (ex.: "Doctoralia"), o link do site dele, um print da página \
+(ícone de clipe) ou um trecho do texto dela. Se você só souber o nome, eu \
+tento pesquisar e encontrar as informações sozinho.
 
 ---
 *Projetado por Raiff Nóbrega e Maria Cecília Paiva.*
@@ -307,6 +308,84 @@ def _read_image_bytes(element: cl.Image) -> bytes:
     raise RuntimeError("Imagem recebida sem conteúdo nem caminho de arquivo.")
 
 
+_URL_LIKE_PATTERN = re.compile(
+    r"^(https?://)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+(/\S*)?$"
+)
+
+
+def _normalize_url(text: str) -> str | None:
+    """Aceita links sem `http(s)://` ou `www.` (ex.: `doctoralia.com.br`),
+    normalizando para uma URL completa. Retorna None se o texto não
+    parecer um link (nesse caso, tratamos como nome de empresa — ver
+    `_search_and_show`)."""
+    candidate = text.strip()
+    if not candidate or " " in candidate:
+        return None
+    if candidate.startswith("http://") or candidate.startswith("https://"):
+        return candidate
+    if _URL_LIKE_PATTERN.match(candidate):
+        return f"https://{candidate}"
+    return None
+
+
+async def _fetch_and_extract_by_url(url: str) -> None:
+    async with cl.Step(name="Coleta do conteúdo do site") as step:
+        step.input = url
+        try:
+            page = scraping.fetch_page_text(url)
+        except scraping.ScrapingError as exc:
+            step.output = f"Falha: {exc}"
+            cl.user_session.set("stage", STAGE_AWAITING_MANUAL_TEXT)
+            cl.user_session.set("pending_company_label", url)
+            await cl.Message(
+                content=(
+                    f"Não consegui coletar o conteúdo desse link automaticamente "
+                    f"({exc}).\n\nVocê pode colar manualmente, numa próxima "
+                    "mensagem, um trecho de texto do site desse concorrente "
+                    "(ex.: a página \"sobre\" ou a home), ou enviar um print "
+                    "da página."
+                )
+            ).send()
+            return
+        step.output = f"{len(page.text)} caracteres coletados."
+
+    await _extract_and_show(url, page.text, source="scraping automático")
+
+
+async def _search_and_show(company_name: str) -> None:
+    """Quando o usuário só informa o NOME do concorrente (sem link), tenta
+    buscar na internet via Groq Compound (busca + visita de site reais).
+    Se a busca falhar por qualquer motivo — inclusive o limite de tokens
+    do tier gratuito da Groq para esse modelo, que é instável —, cai de
+    volta para pedir link, texto ou print, sem travar a conversa."""
+    async with cl.Step(name="Busca do concorrente na internet (Groq Compound)") as step:
+        step.input = company_name
+        try:
+            url, summary = search_competitor_by_name(company_name)
+        except Exception as exc:  # noqa: BLE001
+            step.output = f"Falha na busca: {exc}"
+            url, summary = None, ""
+        else:
+            step.output = f"URL encontrada: {url or 'nenhuma'}\n\n{summary[:500]}"
+
+    has_useful_summary = len(summary.strip()) > 80
+    if not has_useful_summary:
+        cl.user_session.set("stage", STAGE_AWAITING_MANUAL_TEXT)
+        cl.user_session.set("pending_company_label", company_name)
+        await cl.Message(
+            content=(
+                f"Não consegui pesquisar \"{company_name}\" na internet agora "
+                "(a busca automática está instável no momento). Pode me "
+                "enviar o **link do site** dele, colar um **trecho de "
+                "texto**, ou mandar um **print da página**?"
+            )
+        ).send()
+        return
+
+    source = f"busca na internet ({url})" if url else "busca na internet"
+    await _extract_and_show(company_name, summary, source=source)
+
+
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
     stage = cl.user_session.get("stage")
@@ -377,14 +456,15 @@ async def on_message(message: cl.Message) -> None:
         return
 
     if stage == STAGE_DONE:
-        if content.startswith("http://") or content.startswith("https://"):
+        if _first_image_element(message) is not None or content:
             cl.user_session.set("stage", STAGE_AWAITING_LINK)
             await on_message(message)
             return
         await cl.Message(
             content=(
-                "Análise deste concorrente concluída. Envie um novo link de "
-                "concorrente para começar outra análise."
+                "Análise deste concorrente concluída. Envie o próximo "
+                "concorrente (nome, link, texto ou print) para começar "
+                "outra análise."
             )
         ).send()
         return
@@ -401,35 +481,21 @@ async def on_message(message: cl.Message) -> None:
         )
         return
 
-    if not (content.startswith("http://") or content.startswith("https://")):
+    if not content:
         await cl.Message(
             content=(
-                "Isso não parece um link válido. Envie uma URL começando com "
-                "http:// ou https://, ou mande um print da página do "
-                "concorrente (ícone de clipe, abaixo do campo de mensagem) "
-                "se o link estiver bloqueado."
+                "Não recebi nada. Me diga o nome do concorrente, o link do "
+                "site dele, cole um trecho de texto, ou envie um print da "
+                "página (ícone de clipe)."
             )
         ).send()
         return
 
-    async with cl.Step(name="Coleta do conteúdo do site") as step:
-        step.input = content
-        try:
-            page = scraping.fetch_page_text(content)
-        except scraping.ScrapingError as exc:
-            step.output = f"Falha: {exc}"
-            cl.user_session.set("stage", STAGE_AWAITING_MANUAL_TEXT)
-            cl.user_session.set("pending_company_label", content)
-            await cl.Message(
-                content=(
-                    f"Não consegui coletar o conteúdo desse link automaticamente "
-                    f"({exc}).\n\nVocê pode colar manualmente, numa próxima "
-                    "mensagem, um trecho de texto do site desse concorrente "
-                    "(ex.: a página \"sobre\" ou a home) para eu continuar a "
-                    "análise."
-                )
-            ).send()
-            return
-        step.output = f"{len(page.text)} caracteres coletados."
+    normalized_url = _normalize_url(content)
+    if normalized_url is not None:
+        await _fetch_and_extract_by_url(normalized_url)
+        return
 
-    await _extract_and_show(content, page.text, source="scraping automático")
+    # Não é link nem imagem: trata como nome do concorrente e tenta buscar
+    # na internet (com fallback automático se a busca falhar).
+    await _search_and_show(content)
