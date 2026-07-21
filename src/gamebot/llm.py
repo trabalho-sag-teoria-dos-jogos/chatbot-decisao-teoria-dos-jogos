@@ -111,6 +111,58 @@ def parse_user_strategies(raw_text: str) -> list[str]:
     return [str(item).strip() for item in raw_strategies if str(item).strip()]
 
 
+STRATEGY_CLASSIFICATION_SYSTEM_PROMPT = """\
+Você é um analista que classifica estratégias competitivas em categorias
+fixas, para uma heurística de payoff de um jogo de teoria dos jogos.
+
+Categorias possíveis (escolha exatamente uma para cada estratégia):
+- "custo": foco em preço baixo, economia, acessibilidade, promoções.
+- "diferenciacao": foco em tecnologia, inovação, qualidade superior,
+  recursos exclusivos, experiência do usuário, personalização,
+  atendimento diferenciado.
+- "nicho": foco num segmento específico de clientes (ex.: corporativo,
+  um público muito específico, uma vertical de mercado).
+- "geral": não se encaixa claramente em nenhuma das anteriores, ou é
+  genérica demais para classificar com confiança.
+
+Regras estritas:
+- Classifique pelo SENTIDO da estratégia, não apenas por palavras-chave
+  literais — frases como "Diversificação de Serviços" ou "Facilitação do
+  Agendamento" devem ser classificadas pelo que elas realmente significam
+  (ex.: facilitar o agendamento é conveniência/diferenciação de
+  experiência, não "geral" só porque não contém a palavra "tecnologia").
+- Uma estratégia só deve virar "geral" se genuinamente não sugerir
+  nenhuma das outras três categorias.
+- Responda em português do Brasil.
+- Responda EXCLUSIVAMENTE em JSON válido, no formato:
+  {"classifications": [{"strategy": "texto exato da estratégia", "category": "custo|diferenciacao|nicho|geral"}]}
+"""
+
+
+def classify_strategies(strategies: list[str]) -> dict[str, str]:
+    """Classifica uma lista de estratégias nas categorias fixas da
+    heurística de payoff (custo/diferenciação/nicho/geral), usando o LLM
+    para entender o sentido da frase — mais robusto do que casar
+    palavras-chave literais contra texto real extraído de sites ou
+    descrito pelo usuário (ver `gamebot.payoff.classify_strategy_by_keywords`
+    para o fallback determinístico caso esta chamada falhe)."""
+    if not strategies:
+        return {}
+    user_prompt = "Estratégias a classificar:\n" + "\n".join(
+        f"- {s}" for s in strategies
+    )
+    data = _chat_json(STRATEGY_CLASSIFICATION_SYSTEM_PROMPT, user_prompt)
+    raw = data.get("classifications", [])
+    valid_categories = {"custo", "diferenciacao", "nicho", "geral"}
+    result: dict[str, str] = {}
+    for item in raw:
+        strategy = str(item.get("strategy", "")).strip()
+        category = str(item.get("category", "")).strip().lower()
+        if strategy and category in valid_categories:
+            result[strategy] = category
+    return result
+
+
 def extract_strategies(company_label: str, text: str) -> list[StrategyCandidate]:
     """Extrai estratégias competitivas prováveis a partir do texto coletado (RF03)."""
     user_prompt = (

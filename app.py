@@ -12,6 +12,7 @@ import chainlit as cl
 
 from gamebot import payoff, scraping, solver
 from gamebot.llm import (
+    classify_strategies,
     extract_strategies,
     extract_strategies_from_image,
     generate_recommendation,
@@ -168,8 +169,20 @@ async def _ask_payoff_mode() -> None:
     user_strategies = cl.user_session.get("user_strategies")
 
     if mode == payoff.MODE_HEURISTIC:
+        async with cl.Step(name="Classificação das estratégias (Groq / Llama 3)") as step:
+            all_strategies = user_strategies + competitor_strategies
+            step.input = ", ".join(all_strategies)
+            try:
+                category_map = classify_strategies(all_strategies)
+            except Exception as exc:  # noqa: BLE001
+                step.output = f"Falha, usando palavras-chave: {exc}"
+                category_map = None
+            else:
+                step.output = ", ".join(
+                    f"{s} → {category_map.get(s, 'geral')}" for s in all_strategies
+                )
         game = payoff.build_heuristic_game(
-            competitor_label, user_strategies, competitor_strategies
+            competitor_label, user_strategies, competitor_strategies, category_map
         )
         await _show_matrix(game)
     else:

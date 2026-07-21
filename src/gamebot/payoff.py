@@ -41,8 +41,19 @@ _CATEGORY_KEYWORDS: dict[str, list[str]] = {
 }
 
 
-def classify_strategy(strategy_text: str) -> str:
-    """Classifica uma estratégia textual numa categoria heurística fixa."""
+VALID_CATEGORIES = {"custo", "diferenciacao", "nicho", "geral"}
+
+
+def classify_strategy_by_keywords(strategy_text: str) -> str:
+    """Classifica uma estratégia por palavras-chave fixas.
+
+    Serve como *fallback* determinístico caso a classificação via LLM
+    (mais robusta para frases reais, ver `gamebot.llm.classify_strategies`)
+    não esteja disponível. Sozinho, esse método é frágil: frases reais
+    como "Diversificação de Serviços" ou "Facilitação do Agendamento" não
+    contêm nenhuma das palavras-chave e caem em "geral" — por isso não é
+    mais o caminho padrão, só o de segurança.
+    """
     normalized = strategy_text.lower()
     for category, keywords in _CATEGORY_KEYWORDS.items():
         if any(keyword in normalized for keyword in keywords):
@@ -50,10 +61,21 @@ def classify_strategy(strategy_text: str) -> str:
     return "geral"
 
 
-def heuristic_payoff_pair(user_strategy: str, competitor_strategy: str) -> tuple[int, int]:
-    """Calcula o par de payoffs heurísticos (usuário, concorrente) para uma célula."""
-    user_category = classify_strategy(user_strategy)
-    competitor_category = classify_strategy(competitor_strategy)
+def heuristic_payoff_pair(
+    user_strategy: str,
+    competitor_strategy: str,
+    category_map: dict[str, str] | None = None,
+) -> tuple[int, int]:
+    """Calcula o par de payoffs heurísticos (usuário, concorrente) para uma
+    célula. Se `category_map` for fornecido (normalmente vindo de
+    `gamebot.llm.classify_strategies`), usa-o; caso contrário, cai para a
+    classificação por palavras-chave."""
+    if category_map is not None:
+        user_category = category_map.get(user_strategy, "geral")
+        competitor_category = category_map.get(competitor_strategy, "geral")
+    else:
+        user_category = classify_strategy_by_keywords(user_strategy)
+        competitor_category = classify_strategy_by_keywords(competitor_strategy)
 
     if user_category == "geral" or competitor_category == "geral":
         value = HEURISTIC_MEDIUM
@@ -107,7 +129,10 @@ class Game:
 
 
 def build_heuristic_game(
-    competitor_label: str, user_strategies: list[str], competitor_strategies: list[str]
+    competitor_label: str,
+    user_strategies: list[str],
+    competitor_strategies: list[str],
+    category_map: dict[str, str] | None = None,
 ) -> Game:
     game = Game(
         competitor_label=competitor_label,
@@ -117,7 +142,7 @@ def build_heuristic_game(
     )
     for u in user_strategies:
         for c in competitor_strategies:
-            up, cp = heuristic_payoff_pair(u, c)
+            up, cp = heuristic_payoff_pair(u, c, category_map=category_map)
             game.set_cell(u, c, up, cp, is_heuristic=True)
     return game
 
@@ -148,9 +173,12 @@ def render_matrix_markdown(game: Game) -> str:
             if cell is None:
                 row_cells.append("_pendente_")
                 continue
-            tag = "[heurístico]" if cell.is_heuristic else "[manual]"
+            tag = "heurístico" if cell.is_heuristic else "manual"
+            # Markdown puro (sem HTML: o Chainlit roda com
+            # unsafe_allow_html=false por segurança, já que parte do texto
+            # nas células vem de sites externos raspados).
             row_cells.append(
-                f"({cell.user_payoff}, {cell.competitor_payoff})<br><sub>{tag}</sub>"
+                f"({cell.user_payoff}, {cell.competitor_payoff}) _{tag}_"
             )
         rows.append(f"| **{u}** | " + " | ".join(row_cells) + " |")
     return "\n".join(rows)
